@@ -1,25 +1,24 @@
 # Contributing
 
-Thanks for your interest in contributing to viem! Please take a moment to review this document **before submitting a pull request.**
+Thanks for your interest in contributing to Viem! Please take a moment to review this document **before submitting a pull request.**
 
 If you want to contribute, but aren't sure where to start, you can create a [new discussion](https://github.com/wevm/viem/discussions).
 
 If you are contributing to add a new chain to `viem/chains`, please read the [Chains section](#chains).
 
-> **Note**
->
-> **Please ask first before starting work on any significant new features.**
->
-> It's never a fun experience to have your pull request declined after investing time and effort into a new feature. To avoid this from happening, we request that contributors create a [feature request](https://github.com/wevm/viem/discussions/new?category=ideas) to first discuss any API changes or significant new ideas.
+## Rules
 
-<br>
+1. Significant changes to the API or implementation must be reviewed before a Pull Request is created. Create a [Feature Request](https://github.com/wevm/viem/discussions/new?category=ideas) first to discuss any API changes or new ideas. 
+2. Contributors must be humans, not bots.
+3. Contributor GitHub Accounts must have at least one non-trivial contribution to another repository.
+4. First time contributions must not contain only spelling or grammatical fixes.
 
 ## Basic guide
 
 This guide is intended to help you get started with contributing. By following these steps, you will understand the development process and workflow.
 
 1. [Cloning the repository](#cloning-the-repository)
-2. [Installing Node.js and Bun](#installing-nodejs-and-bun)
+2. [Installing Node.js and pnpm](#installing-nodejs-and-pnpm)
 3. [Installing Foundry](#installing-foundry)
 4. [Installing dependencies](#installing-dependencies)
 5. [Running the test suite](#running-the-test-suite)
@@ -49,21 +48,21 @@ gh repo clone wevm/viem -- --recurse-submodules
 
 ---
 
-### Installing Node.js and Bun
+### Installing Node.js and pnpm
 
-wagmi uses [Bun workspaces](https://bun.sh/docs/install/workspaces) to manage multiple projects. You need to install **Node.js v18 or higher** and **Bun v1 or higher**.
+Viem uses [pnpm workspaces](https://pnpm.io/workspaces) to manage multiple projects. You need to install **Node.js v22 or higher** and **pnpm v9.1.0 or higher**.
 
-You can run the following commands in your terminal to check your local Node.js and Bun versions:
+You can run the following commands in your terminal to check your local Node.js and pnpm versions:
 
 ```bash
 node -v
-bun -v
+pnpm -v
 ```
 
-If the versions are not correct or you don't have Node.js or Bun installed, download and follow their setup instructions:
+If the versions are not correct or you don't have Node.js or pnpm installed, download and follow their setup instructions:
 
 - Install Node.js using [fnm](https://github.com/Schniz/fnm) or from the [official website](https://nodejs.org)
-- Install [Bun](https://bun.sh/docs/installation)
+- Install [pnpm](https://pnpm.io/installation)
 
 <div align="right">
   <a href="#basic-guide">&uarr; back to top</a></b>
@@ -73,7 +72,7 @@ If the versions are not correct or you don't have Node.js or Bun installed, down
 
 ### Installing Foundry
 
-viem uses [Foundry](https://book.getfoundry.sh/) for testing. We run a local [Anvil](https://github.com/foundry-rs/foundry/tree/master/anvil) instance against a forked Ethereum node, where we can also use tools like [Forge](https://book.getfoundry.sh/forge/) to deploy test contracts to it.
+Viem uses [Foundry](https://book.getfoundry.sh/) for testing. We run a local [Anvil](https://github.com/foundry-rs/foundry/tree/master/anvil) instance against a forked Ethereum node, where we can also use tools like [Forge](https://book.getfoundry.sh/forge/) to deploy test contracts to it.
 
 Install Foundry using the following command:
 
@@ -92,10 +91,10 @@ curl -L https://foundry.paradigm.xyz | bash
 Once in the project's root directory, run the following command to install the project's dependencies:
 
 ```bash
-bun install
+pnpm install
 ```
 
-After the install completes, Bun links packages across the project for development and [git hooks](https://github.com/toplenboren/simple-git-hooks) are set up.
+After the install completes, pnpm links packages across the project for development and [git hooks](https://github.com/toplenboren/simple-git-hooks) are set up.
 
 <div align="right">
   <a href="#basic-guide">&uarr; back to top</a></b>
@@ -108,16 +107,18 @@ After the install completes, Bun links packages across the project for developme
 First, add the following to your environment (recommended to use [`direnv`](https://github.com/direnv/direnv)):
 
 ```bash
-VITE_ANVIL_FORK_URL=https://rpc
-VITE_ANVIL_BLOCK_TIME=1
-VITE_ANVIL_BLOCK_NUMBER=16280770
+VITE_ANVIL_FORK_URL=
+VITE_ANVIL_FORK_URL_OPTIMISM=
+VITE_ANVIL_FORK_URL_OPTIMISM_SEPOLIA=
+VITE_ANVIL_FORK_URL_SEPOLIA=
+VITE_ANVIL_FORK_URL_ZKSYNC=
+VITE_BATCH_MULTICALL=false
 VITE_NETWORK_TRANSPORT_MODE=http
-VITE_ANVIL_PORT=8545
 ```
 
 `VITE_ANVIL_FORK_URL` can be for any RPC service provider (e.g. Alchemy or Infura) for the mainnet. Now you are ready to run the tests!
 
-- `bun run test` — runs tests in watch mode
+- `pnpm test` — runs tests in watch mode
 
 Sometimes there may be some tests which fail unexpectedly – you can press `f` to rerun them and they should pass.
 
@@ -131,10 +132,10 @@ When adding new features or fixing bugs, it's important to add test cases to cov
 
 ### Writing documentation
 
-Documentation is crucial to helping developers of all experience levels use viem. viem uses [VitePress](https://github.com/vuejs/vitepress) and Markdown for the documentation site (located at [`site`](../site)). To start the site in dev mode, run:
+Documentation is crucial to helping developers of all experience levels use Viem. Viem uses [Vocs](https://vocs.dev) and Markdown for the documentation site (located at [`site`](../site)). To start the site in dev mode, run:
 
 ```bash
-bun run dev:docs
+pnpm docs:dev 
 ```
 
 Try to keep documentation brief and use plain language so folks of all experience levels can understand. If you think something is unclear or could be explained better, you are welcome to open a pull request.
@@ -170,7 +171,7 @@ When adding new features or fixing bugs, we'll need to bump the package versions
 
 Each changeset defines which package(s) should be published and whether the change should be a major/minor/patch release, as well as providing release notes that will be added to the changelog upon release.
 
-To create a new changeset, run `bun run changeset`. This will run the Changesets CLI, prompting you for details about the change. You’ll be able to edit the file after it’s created — don’t worry about getting everything perfect up front.
+To create a new changeset, run `pnpm changeset`. This will run the Changesets CLI, prompting you for details about the change. You’ll be able to edit the file after it’s created — don’t worry about getting everything perfect up front.
 
 Even though you can technically use any markdown formatting you like, headings should be avoided since each changeset will ultimately be nested within a bullet list. Instead, bold text should be used as section headings.
 
@@ -181,7 +182,7 @@ If your PR is making changes to an area that already has a changeset (e.g. there
 <br>
 
 <div>
-  ✅ Now you're ready to contribute to viem!
+  ✅ Now you're ready to contribute to Viem!
 </div>
 
 <div align="right">
@@ -197,17 +198,16 @@ If you wish to contribute to add an additional Chain to the `viem/chains` entryp
 ### Requirements
 
 - **Must haves**:
+  - chain must be merged into [ethereum-lists/chains](https://github.com/ethereum-lists/chains),
   - a unique Chain ID (`id`),
   - a human-readable name (`name`),
-  - an internal network label (`network`),
   - a native currency reference (`nativeCurrency`),
-  - a public, credible RPC URL (`rpcUrls.default` & `rpcUrls.public`)
+  - a public, credible RPC URL (`rpcUrls.default`)
 - **Nice to haves**
   - a block explorer (`blockExplorers`)
   - a [multicall3](https://www.multicall3.com/) contract (`contracts.multicall3`)
     - this contract **must** be verified, and **must** match the bytecode of the [multicall3 contract](https://etherscan.io/address/0xca11bde05977b3631167028862be2a173976ca11#code).
 - **Optional**
-  - other named RPC URLs (such as `rpcUrls.alchemy`, `rpcUrls.infura`, etc.)
   - ENS registry contract (`contracts.ensRegistry`)
   - testnet flag (`testnet`)
 
@@ -276,6 +276,7 @@ export const mainnet = /*#__PURE__*/ defineChain({
     default: {
       name: 'Etherscan',
       url: 'https://etherscan.io',
+      apiUrl: 'https://api.etherscan.io/api',
     },
   },
   contracts: {
@@ -303,21 +304,21 @@ export { arbitrum } from './definitions/arbitrum.js'
 export { zora } from './definitions/zora.js'
 ```
 
-#### 4. Add changeset
+#### 5. Add changeset
 
 Add a `patch` changeset with the description `"Added <your chain here> chain."`.
 
 ```diff
-> bun run changeset
+> pnpm changeset
 
-What kind of change is this for viem?
+What kind of change is this for Viem?
 + patch
 
 Please enter a summary for this change
 + Added Example chain.
 ```
 
-#### 5. Open your PR
+#### 6. Open your PR
 
 Now you are ready to open your Pull Request.
 

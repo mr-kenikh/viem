@@ -1,13 +1,16 @@
 import type { ErrorType } from '../../errors/utils.js'
+import type { SignedAuthorizationList } from '../../experimental/eip7702/types/authorization.js'
+import type { RpcAuthorizationList } from '../../experimental/eip7702/types/rpc.js'
 import type { BlockTag } from '../../types/block.js'
 import type { Chain } from '../../types/chain.js'
 import type {
   ExtractChainFormatterExclude,
   ExtractChainFormatterReturnType,
 } from '../../types/chain.js'
+import type { Hex } from '../../types/misc.js'
 import type { RpcTransaction } from '../../types/rpc.js'
-import type { Transaction } from '../../types/transaction.js'
-import type { UnionLooseOmit } from '../../types/utils.js'
+import type { Transaction, TransactionType } from '../../types/transaction.js'
+import type { ExactPartial, UnionLooseOmit } from '../../types/utils.js'
 import { hexToNumber } from '../encoding/fromHex.js'
 import { type DefineFormatterErrorType, defineFormatter } from './formatter.js'
 
@@ -17,19 +20,19 @@ type TransactionPendingDependencies =
   | 'transactionIndex'
 
 export type FormattedTransaction<
-  TChain extends Chain | undefined = undefined,
-  TBlockTag extends BlockTag = BlockTag,
+  chain extends Chain | undefined = undefined,
+  blockTag extends BlockTag = BlockTag,
   _FormatterReturnType = ExtractChainFormatterReturnType<
-    TChain,
+    chain,
     'transaction',
     Transaction
   >,
   _ExcludedPendingDependencies extends string = TransactionPendingDependencies &
-    ExtractChainFormatterExclude<TChain, 'transaction'>,
+    ExtractChainFormatterExclude<chain, 'transaction'>,
 > = UnionLooseOmit<_FormatterReturnType, TransactionPendingDependencies> & {
   [_K in _ExcludedPendingDependencies]: never
 } & Pick<
-    Transaction<bigint, number, TBlockTag extends 'pending' ? true : false>,
+    Transaction<bigint, number, blockTag extends 'pending' ? true : false>,
     TransactionPendingDependencies
   >
 
@@ -37,11 +40,13 @@ export const transactionType = {
   '0x0': 'legacy',
   '0x1': 'eip2930',
   '0x2': 'eip1559',
-} as const
+  '0x3': 'eip4844',
+  '0x4': 'eip7702',
+} as const satisfies Record<Hex, TransactionType>
 
 export type FormatTransactionErrorType = ErrorType
 
-export function formatTransaction(transaction: Partial<RpcTransaction>) {
+export function formatTransaction(transaction: ExactPartial<RpcTransaction>) {
   const transaction_ = {
     ...transaction,
     blockHash: transaction.blockHash ? transaction.blockHash : null,
@@ -51,6 +56,9 @@ export function formatTransaction(transaction: Partial<RpcTransaction>) {
     chainId: transaction.chainId ? hexToNumber(transaction.chainId) : undefined,
     gas: transaction.gas ? BigInt(transaction.gas) : undefined,
     gasPrice: transaction.gasPrice ? BigInt(transaction.gasPrice) : undefined,
+    maxFeePerBlobGas: transaction.maxFeePerBlobGas
+      ? BigInt(transaction.maxFeePerBlobGas)
+      : undefined,
     maxFeePerGas: transaction.maxFeePerGas
       ? BigInt(transaction.maxFeePerGas)
       : undefined,
@@ -70,6 +78,11 @@ export function formatTransaction(transaction: Partial<RpcTransaction>) {
     v: transaction.v ? BigInt(transaction.v) : undefined,
   } as Transaction
 
+  if (transaction.authorizationList)
+    transaction_.authorizationList = formatAuthorizationList(
+      transaction.authorizationList,
+    )
+
   transaction_.yParity = (() => {
     // If `yParity` is provided, we will use it.
     if (transaction.yParity) return Number(transaction.yParity)
@@ -86,13 +99,18 @@ export function formatTransaction(transaction: Partial<RpcTransaction>) {
 
   if (transaction_.type === 'legacy') {
     delete transaction_.accessList
+    delete transaction_.maxFeePerBlobGas
     delete transaction_.maxFeePerGas
     delete transaction_.maxPriorityFeePerGas
     delete transaction_.yParity
   }
   if (transaction_.type === 'eip2930') {
+    delete transaction_.maxFeePerBlobGas
     delete transaction_.maxFeePerGas
     delete transaction_.maxPriorityFeePerGas
+  }
+  if (transaction_.type === 'eip1559') {
+    delete transaction_.maxFeePerBlobGas
   }
   return transaction_
 }
@@ -103,3 +121,18 @@ export const defineTransaction = /*#__PURE__*/ defineFormatter(
   'transaction',
   formatTransaction,
 )
+
+//////////////////////////////////////////////////////////////////////////////
+
+function formatAuthorizationList(
+  authorizationList: RpcAuthorizationList,
+): SignedAuthorizationList {
+  return authorizationList.map((authorization) => ({
+    contractAddress: (authorization as any).address,
+    chainId: Number(authorization.chainId),
+    nonce: Number(authorization.nonce),
+    r: authorization.r,
+    s: authorization.s,
+    yParity: Number(authorization.yParity),
+  })) as SignedAuthorizationList
+}

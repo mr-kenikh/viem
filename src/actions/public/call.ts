@@ -1,4 +1,4 @@
-import type { Address } from 'abitype'
+import { type Address, parseAbi } from 'abitype'
 
 import type { Account } from '../../accounts/types.js'
 import {
@@ -9,12 +9,17 @@ import type { Client } from '../../clients/createClient.js'
 import type { Transport } from '../../clients/transports/createTransport.js'
 import { multicall3Abi } from '../../constants/abis.js'
 import { aggregate3Signature } from '../../constants/contract.js'
+import {
+  deploylessCallViaBytecodeBytecode,
+  deploylessCallViaFactoryBytecode,
+} from '../../constants/contracts.js'
 import { BaseError } from '../../errors/base.js'
 import {
   ChainDoesNotSupportContract,
   ClientChainNotConfiguredError,
 } from '../../errors/chain.js'
 import {
+  CounterfactualDeploymentFailedError,
   RawContractError,
   type RawContractErrorType,
 } from '../../errors/contract.js'
@@ -23,12 +28,17 @@ import type { BlockTag } from '../../types/block.js'
 import type { Chain } from '../../types/chain.js'
 import type { Hex } from '../../types/misc.js'
 import type { RpcTransactionRequest } from '../../types/rpc.js'
+import type { StateOverride } from '../../types/stateOverride.js'
 import type { TransactionRequest } from '../../types/transaction.js'
-import type { UnionOmit } from '../../types/utils.js'
+import type { ExactPartial, UnionOmit } from '../../types/utils.js'
 import {
   type DecodeFunctionResultErrorType,
   decodeFunctionResult,
 } from '../../utils/abi/decodeFunctionResult.js'
+import {
+  type EncodeDeployDataErrorType,
+  encodeDeployData,
+} from '../../utils/abi/encodeDeployData.js'
 import {
   type EncodeFunctionDataErrorType,
   encodeFunctionData,
@@ -56,52 +66,67 @@ import {
   type CreateBatchSchedulerErrorType,
   createBatchScheduler,
 } from '../../utils/promise/createBatchScheduler.js'
+import {
+  type SerializeStateOverrideErrorType,
+  serializeStateOverride,
+} from '../../utils/stateOverride.js'
 import { assertRequest } from '../../utils/transaction/assertRequest.js'
 import type {
   AssertRequestErrorType,
   AssertRequestParameters,
 } from '../../utils/transaction/assertRequest.js'
 
-export type FormattedCall<
-  TChain extends Chain | undefined = Chain | undefined,
-> = FormattedTransactionRequest<TChain>
-
 export type CallParameters<
-  TChain extends Chain | undefined = Chain | undefined,
-> = UnionOmit<FormattedCall<TChain>, 'from'> & {
-  account?: Account | Address
-  batch?: boolean
+  chain extends Chain | undefined = Chain | undefined,
+> = UnionOmit<FormattedCall<chain>, 'from'> & {
+  /** Account attached to the call (msg.sender). */
+  account?: Account | Address | undefined
+  /** Whether or not to enable multicall batching on this call. */
+  batch?: boolean | undefined
+  /** Bytecode to perform the call on. */
+  code?: Hex | undefined
+  /** Contract deployment factory address (ie. Create2 factory, Smart Account factory, etc). */
+  factory?: Address | undefined
+  /** Calldata to execute on the factory to deploy the contract. */
+  factoryData?: Hex | undefined
+  /** State overrides for the call. */
+  stateOverride?: StateOverride | undefined
 } & (
     | {
         /** The balance of the account at a block number. */
-        blockNumber?: bigint
-        blockTag?: never
+        blockNumber?: bigint | undefined
+        blockTag?: undefined
       }
     | {
-        blockNumber?: never
+        blockNumber?: undefined
         /**
          * The balance of the account at a block tag.
          * @default 'latest'
          */
-        blockTag?: BlockTag
+        blockTag?: BlockTag | undefined
       }
   )
+type FormattedCall<chain extends Chain | undefined = Chain | undefined> =
+  FormattedTransactionRequest<chain>
 
 export type CallReturnType = { data: Hex | undefined }
 
 export type CallErrorType = GetCallErrorReturnType<
   | ParseAccountErrorType
+  | SerializeStateOverrideErrorType
   | AssertRequestErrorType
   | NumberToHexErrorType
   | FormatTransactionRequestErrorType
   | ScheduleMulticallErrorType
   | RequestErrorType
+  | ToDeploylessCallViaBytecodeDataErrorType
+  | ToDeploylessCallViaFactoryDataErrorType
 >
 
 /**
  * Executes a new message call immediately without submitting a transaction to the network.
  *
- * - Docs: https://viem.sh/docs/actions/public/call.html
+ * - Docs: https://viem.sh/docs/actions/public/call
  * - JSON-RPC Methods: [`eth_call`](https://ethereum.org/en/developers/docs/apis/json-rpc/#eth_call)
  *
  * @param client - Client to use
@@ -123,9 +148,9 @@ export type CallErrorType = GetCallErrorReturnType<
  *   to: '0x70997970c51812dc3a010c7d01b50e0d17dc79c8',
  * })
  */
-export async function call<TChain extends Chain | undefined>(
-  client: Client<Transport, TChain>,
-  args: CallParameters<TChain>,
+export async function call<chain extends Chain | undefined>(
+  client: Client<Transport, chain>,
+  args: CallParameters<chain>,
 ): Promise<CallReturnType> {
   const {
     account: account_ = client.account,
@@ -133,23 +158,60 @@ export async function call<TChain extends Chain | undefined>(
     blockNumber,
     blockTag = 'latest',
     accessList,
-    data,
+    blobs,
+    code,
+    data: data_,
+    factory,
+    factoryData,
     gas,
     gasPrice,
+    maxFeePerBlobGas,
     maxFeePerGas,
     maxPriorityFeePerGas,
     nonce,
     to,
     value,
+    stateOverride,
     ...rest
   } = args
   const account = account_ ? parseAccount(account_) : undefined
+
+  if (code && (factory || factoryData))
+    throw new BaseError(
+      'Cannot provide both `code` & `factory`/`factoryData` as parameters.',
+    )
+  if (code && to)
+    throw new BaseError('Cannot provide both `code` & `to` as parameters.')
+
+  // Check if the call is deployless via bytecode.
+  const deploylessCallViaBytecode = code && data_
+  // Check if the call is deployless via a factory.
+  const deploylessCallViaFactory = factory && factoryData && to && data_
+  const deploylessCall = deploylessCallViaBytecode || deploylessCallViaFactory
+
+  const data = (() => {
+    if (deploylessCallViaBytecode)
+      return toDeploylessCallViaBytecodeData({
+        code,
+        data: data_,
+      })
+    if (deploylessCallViaFactory)
+      return toDeploylessCallViaFactoryData({
+        data: data_,
+        factory,
+        factoryData,
+        to,
+      })
+    return data_
+  })()
 
   try {
     assertRequest(args as AssertRequestParameters)
 
     const blockNumberHex = blockNumber ? numberToHex(blockNumber) : undefined
     const block = blockNumberHex || blockTag
+
+    const rpcStateOverride = serializeStateOverride(stateOverride)
 
     const chainFormat = client.chain?.formatters?.transactionRequest?.format
     const format = chainFormat || formatTransactionRequest
@@ -159,23 +221,25 @@ export async function call<TChain extends Chain | undefined>(
       ...extract(rest, { format: chainFormat }),
       from: account?.address,
       accessList,
+      blobs,
       data,
       gas,
       gasPrice,
+      maxFeePerBlobGas,
       maxFeePerGas,
       maxPriorityFeePerGas,
       nonce,
-      to,
+      to: deploylessCall ? undefined : to,
       value,
     } as TransactionRequest) as TransactionRequest
 
-    if (batch && shouldPerformMulticall({ request })) {
+    if (batch && shouldPerformMulticall({ request }) && !rpcStateOverride) {
       try {
         return await scheduleMulticall(client, {
           ...request,
           blockNumber,
           blockTag,
-        } as unknown as ScheduleMulticallParameters<TChain>)
+        } as unknown as ScheduleMulticallParameters<chain>)
       } catch (err) {
         if (
           !(err instanceof ClientChainNotConfiguredError) &&
@@ -187,20 +251,34 @@ export async function call<TChain extends Chain | undefined>(
 
     const response = await client.request({
       method: 'eth_call',
-      params: block
-        ? [request as Partial<RpcTransactionRequest>, block]
-        : [request as Partial<RpcTransactionRequest>],
+      params: rpcStateOverride
+        ? [
+            request as ExactPartial<RpcTransactionRequest>,
+            block,
+            rpcStateOverride,
+          ]
+        : [request as ExactPartial<RpcTransactionRequest>, block],
     })
     if (response === '0x') return { data: undefined }
     return { data: response }
   } catch (err) {
     const data = getRevertErrorData(err)
+
+    // Check for CCIP-Read offchain lookup signature.
     const { offchainLookup, offchainLookupSignature } = await import(
       '../../utils/ccip.js'
     )
-    if (data?.slice(0, 10) === offchainLookupSignature && to) {
+    if (
+      client.ccipRead !== false &&
+      data?.slice(0, 10) === offchainLookupSignature &&
+      to
+    )
       return { data: await offchainLookup(client, { data, to }) }
-    }
+
+    // Check for counterfactual deployment error.
+    if (deploylessCall && data?.slice(0, 10) === '0x101bb98d')
+      throw new CounterfactualDeploymentFailedError({ factory })
+
     throw getCallError(err as ErrorType, {
       ...args,
       account,
@@ -226,16 +304,16 @@ function shouldPerformMulticall({ request }: { request: TransactionRequest }) {
   return true
 }
 
-type ScheduleMulticallParameters<TChain extends Chain | undefined> = Pick<
-  CallParameters<TChain>,
+type ScheduleMulticallParameters<chain extends Chain | undefined> = Pick<
+  CallParameters<chain>,
   'blockNumber' | 'blockTag'
 > & {
   data: Hex
-  multicallAddress?: Address
+  multicallAddress?: Address | undefined
   to: Address
 }
 
-export type ScheduleMulticallErrorType =
+type ScheduleMulticallErrorType =
   | GetChainContractAddressErrorType
   | NumberToHexErrorType
   | CreateBatchSchedulerErrorType
@@ -244,9 +322,9 @@ export type ScheduleMulticallErrorType =
   | RawContractErrorType
   | ErrorType
 
-async function scheduleMulticall<TChain extends Chain | undefined>(
+async function scheduleMulticall<chain extends Chain | undefined>(
   client: Client<Transport>,
-  args: ScheduleMulticallParameters<TChain>,
+  args: ScheduleMulticallParameters<chain>,
 ) {
   const { batchSize = 1024, wait = 0 } =
     typeof client.batch?.multicall === 'object' ? client.batch.multicall : {}
@@ -324,10 +402,46 @@ async function scheduleMulticall<TChain extends Chain | undefined>(
   return { data: returnData }
 }
 
+type ToDeploylessCallViaBytecodeDataErrorType =
+  | EncodeDeployDataErrorType
+  | ErrorType
+
+function toDeploylessCallViaBytecodeData(parameters: {
+  code: Hex
+  data: Hex
+}) {
+  const { code, data } = parameters
+  return encodeDeployData({
+    abi: parseAbi(['constructor(bytes, bytes)']),
+    bytecode: deploylessCallViaBytecodeBytecode,
+    args: [code, data],
+  })
+}
+
+type ToDeploylessCallViaFactoryDataErrorType =
+  | EncodeDeployDataErrorType
+  | ErrorType
+
+function toDeploylessCallViaFactoryData(parameters: {
+  data: Hex
+  factory: Address
+  factoryData: Hex
+  to: Address
+}) {
+  const { data, factory, factoryData, to } = parameters
+  return encodeDeployData({
+    abi: parseAbi(['constructor(address, bytes, address, bytes)']),
+    bytecode: deploylessCallViaFactoryBytecode,
+    args: [to, data, factory, factoryData],
+  })
+}
+
+/** @internal */
 export type GetRevertErrorDataErrorType = ErrorType
 
+/** @internal */
 export function getRevertErrorData(err: unknown) {
   if (!(err instanceof BaseError)) return undefined
   const error = err.walk() as RawContractError
-  return typeof error.data === 'object' ? error.data.data : error.data
+  return typeof error?.data === 'object' ? error.data?.data : error.data
 }

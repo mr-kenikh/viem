@@ -9,14 +9,12 @@ export const jbc = /*#__PURE__*/ defineChain({
     default: {
       http: ['https://rpc-l1.jibchain.net'],
     },
-    public: {
-      http: ['https://rpc-l1.jibchain.net'],
-    },
   },
   blockExplorers: {
     default: {
       name: 'Blockscout',
       url: 'https://exp-l1.jibchain.net',
+      apiUrl: 'https://exp-l1.jibchain.net/api',
     },
   },
   contracts: {

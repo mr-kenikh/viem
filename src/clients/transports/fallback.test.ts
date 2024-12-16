@@ -117,7 +117,7 @@ describe('request', () => {
 
     let transport = fallback([http(server1.url), http(server3.url)])({
       chain: localhost,
-    })
+    }) as ReturnType<FallbackTransport>
     expect(await transport.request({ method: 'eth_blockNumber' })).toBe('0x1')
 
     // ensure `retryCount` on transport is adhered
@@ -188,7 +188,7 @@ describe('request', () => {
       Request body: {"method":"eth_blockNumber"}
 
       Details: Internal Server Error
-      Version: viem@1.0.2],
+      Version: viem@x.y.z],
           "method": "eth_blockNumber",
           "params": undefined,
           "status": "error",
@@ -201,7 +201,7 @@ describe('request', () => {
       Request body: {"method":"eth_blockNumber"}
 
       Details: Internal Server Error
-      Version: viem@1.0.2],
+      Version: viem@x.y.z],
           "method": "eth_blockNumber",
           "params": undefined,
           "status": "error",
@@ -496,6 +496,7 @@ describe('client', () => {
         "account": undefined,
         "batch": undefined,
         "cacheTime": 4000,
+        "ccipRead": undefined,
         "chain": undefined,
         "extend": [Function],
         "key": "base",
@@ -645,7 +646,7 @@ describe('client', () => {
       Request body: {"method":"eth_blockNumber"}
 
       Details: sad times
-      Version: viem@1.0.2]
+      Version: viem@x.y.z]
     `)
     expect(count).toBe(8)
   })
@@ -749,7 +750,7 @@ describe('rankTransports', () => {
     const transport2 = http(server2.url, { key: '2' })
     const transport3 = http(server3.url, { key: '3' })
 
-    const rankedTransports: Transport[][] = []
+    const rankedTransports: (readonly Transport[])[] = []
 
     rankTransports({
       chain: localhost,
@@ -824,6 +825,44 @@ describe('rankTransports', () => {
           "1",
           "3",
         ],
+      ]
+    `)
+  })
+
+  test('behavior: custom ping', async () => {
+    const results: { method: string }[] = []
+
+    const server = await createHttpServer((req, res) => {
+      req.setEncoding('utf8')
+      req.on('data', (body) => {
+        results.push(JSON.parse(body))
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ result: '0x1' }))
+      })
+    })
+
+    const transport1 = http(server.url, { key: '1' })
+
+    let count = 0
+    rankTransports({
+      chain: localhost,
+      interval: 10,
+      transports: [transport1],
+      onTransports() {},
+      ping({ transport }) {
+        count++
+        return transport.request({
+          method: count % 2 === 0 ? 'eth_blockNumber' : 'eth_getBlockByNumber',
+        })
+      },
+    })
+
+    await wait(20)
+
+    expect(results.map((r) => r.method)).toMatchInlineSnapshot(`
+      [
+        "eth_getBlockByNumber",
+        "eth_blockNumber",
       ]
     `)
   })

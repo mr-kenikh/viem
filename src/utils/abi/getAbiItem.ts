@@ -1,6 +1,9 @@
-import { type Abi, type AbiParameter, type Address } from 'abitype'
+import type { Abi, AbiParameter, Address } from 'abitype'
 
-import { AbiItemAmbiguityError } from '../../errors/abi.js'
+import {
+  AbiItemAmbiguityError,
+  type AbiItemAmbiguityErrorType,
+} from '../../errors/abi.js'
 import type { ErrorType } from '../../errors/utils.js'
 import type {
   AbiItem,
@@ -12,12 +15,12 @@ import type {
 import type { Hex } from '../../types/misc.js'
 import type { UnionEvaluate } from '../../types/utils.js'
 import { type IsHexErrorType, isHex } from '../../utils/data/isHex.js'
-import { getEventSelector } from '../../utils/hash/getEventSelector.js'
-import {
-  type GetFunctionSelectorErrorType,
-  getFunctionSelector,
-} from '../../utils/hash/getFunctionSelector.js'
 import { type IsAddressErrorType, isAddress } from '../address/isAddress.js'
+import { toEventSelector } from '../hash/toEventSelector.js'
+import {
+  type ToFunctionSelectorErrorType,
+  toFunctionSelector,
+} from '../hash/toFunctionSelector.js'
 
 export type GetAbiItemParameters<
   abi extends Abi | readonly unknown[] = Abi,
@@ -56,7 +59,8 @@ export type GetAbiItemParameters<
 export type GetAbiItemErrorType =
   | IsArgOfTypeErrorType
   | IsHexErrorType
-  | GetFunctionSelectorErrorType
+  | ToFunctionSelectorErrorType
+  | AbiItemAmbiguityErrorType
   | ErrorType
 
 export type GetAbiItemReturnType<
@@ -76,7 +80,7 @@ export type GetAbiItemReturnType<
 export function getAbiItem<
   const abi extends Abi | readonly unknown[],
   name extends AbiItemName<abi>,
-  args extends AbiItemArgs<abi, name> | undefined = undefined,
+  const args extends AbiItemArgs<abi, name> | undefined = undefined,
 >(
   parameters: GetAbiItemParameters<abi, name, args>,
 ): GetAbiItemReturnType<abi, name, args> {
@@ -86,8 +90,8 @@ export function getAbiItem<
   const abiItems = (abi as Abi).filter((abiItem) => {
     if (isSelector) {
       if (abiItem.type === 'function')
-        return getFunctionSelector(abiItem) === name
-      if (abiItem.type === 'event') return getEventSelector(abiItem) === name
+        return toFunctionSelector(abiItem) === name
+      if (abiItem.type === 'event') return toEventSelector(abiItem) === name
       return false
     }
     return 'name' in abiItem && abiItem.name === name
@@ -148,14 +152,15 @@ export function getAbiItem<
   return abiItems[0] as GetAbiItemReturnType<abi, name, args>
 }
 
-export type IsArgOfTypeErrorType = IsAddressErrorType | ErrorType
+type IsArgOfTypeErrorType = IsAddressErrorType | ErrorType
 
+/** @internal */
 export function isArgOfType(arg: unknown, abiParameter: AbiParameter): boolean {
   const argType = typeof arg
   const abiParameterType = abiParameter.type
   switch (abiParameterType) {
     case 'address':
-      return isAddress(arg as Address)
+      return isAddress(arg as Address, { strict: false })
     case 'bool':
       return argType === 'boolean'
     case 'function':
@@ -207,6 +212,7 @@ export function isArgOfType(arg: unknown, abiParameter: AbiParameter): boolean {
   }
 }
 
+/** @internal */
 export function getAmbiguousTypes(
   sourceParameters: readonly AbiParameter[],
   targetParameters: readonly AbiParameter[],
@@ -233,9 +239,9 @@ export function getAmbiguousTypes(
     const ambiguous = (() => {
       if (types.includes('address') && types.includes('bytes20')) return true
       if (types.includes('address') && types.includes('string'))
-        return isAddress(args[parameterIndex] as Address)
+        return isAddress(args[parameterIndex] as Address, { strict: false })
       if (types.includes('address') && types.includes('bytes'))
-        return isAddress(args[parameterIndex] as Address)
+        return isAddress(args[parameterIndex] as Address, { strict: false })
       return false
     })()
 

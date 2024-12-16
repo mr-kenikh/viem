@@ -76,8 +76,8 @@ test('error: constructor not found', () => {
     [AbiConstructorNotFoundError: A constructor was not found on the ABI.
     Make sure you are using the correct ABI and that the constructor exists on it.
 
-    Docs: https://viem.sh/docs/contract/decodeDeployData.html
-    Version: viem@1.0.2]
+    Docs: https://viem.sh/docs/contract/decodeDeployData
+    Version: viem@x.y.z]
   `)
 })
 
@@ -99,8 +99,8 @@ test('error: no inputs', () => {
     [AbiConstructorParamsNotFoundError: Constructor arguments were provided (\`args\`), but a constructor parameters (\`inputs\`) were not found on the ABI.
     Make sure you are using the correct ABI, and that the \`inputs\` attribute on the constructor exists.
 
-    Docs: https://viem.sh/docs/contract/decodeDeployData.html
-    Version: viem@1.0.2]
+    Docs: https://viem.sh/docs/contract/decodeDeployData
+    Version: viem@x.y.z]
   `,
   )
   expect(() =>
@@ -121,8 +121,8 @@ test('error: no inputs', () => {
     [AbiConstructorParamsNotFoundError: Constructor arguments were provided (\`args\`), but a constructor parameters (\`inputs\`) were not found on the ABI.
     Make sure you are using the correct ABI, and that the \`inputs\` attribute on the constructor exists.
 
-    Docs: https://viem.sh/docs/contract/decodeDeployData.html
-    Version: viem@1.0.2]
+    Docs: https://viem.sh/docs/contract/decodeDeployData
+    Version: viem@x.y.z]
   `,
   )
   expect(() =>
@@ -143,8 +143,8 @@ test('error: no inputs', () => {
     [AbiConstructorParamsNotFoundError: Constructor arguments were provided (\`args\`), but a constructor parameters (\`inputs\`) were not found on the ABI.
     Make sure you are using the correct ABI, and that the \`inputs\` attribute on the constructor exists.
 
-    Docs: https://viem.sh/docs/contract/decodeDeployData.html
-    Version: viem@1.0.2]
+    Docs: https://viem.sh/docs/contract/decodeDeployData
+    Version: viem@x.y.z]
   `,
   )
 })

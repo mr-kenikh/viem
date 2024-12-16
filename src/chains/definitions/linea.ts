@@ -1,6 +1,8 @@
+import { chainConfig } from '../../linea/chainConfig.js'
 import { defineChain } from '../../utils/chain/defineChain.js'
 
 export const linea = /*#__PURE__*/ defineChain({
+  ...chainConfig,
   id: 59_144,
   name: 'Linea Mainnet',
   nativeCurrency: { name: 'Linea Ether', symbol: 'ETH', decimals: 18 },
@@ -14,6 +16,7 @@ export const linea = /*#__PURE__*/ defineChain({
     default: {
       name: 'Etherscan',
       url: 'https://lineascan.build',
+      apiUrl: 'https://api.lineascan.build/api',
     },
   },
   contracts: {

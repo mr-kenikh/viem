@@ -24,11 +24,13 @@ import type {
   Prettify,
   UnionEvaluate,
 } from '../../types/utils.js'
+import { size } from '../data/size.js'
 import {
-  type GetEventSelectorErrorType,
-  getEventSelector,
-} from '../hash/getEventSelector.js'
+  type ToEventSelectorErrorType,
+  toEventSelector,
+} from '../hash/toEventSelector.js'
 
+import { PositionOutOfBoundsError } from '../../errors/cursor.js'
 import {
   type DecodeAbiParametersErrorType,
   decodeAbiParameters,
@@ -44,7 +46,7 @@ export type DecodeEventLogParameters<
 > = {
   abi: abi
   data?: data | undefined
-  eventName?: eventName | ContractEventName<abi>
+  eventName?: eventName | ContractEventName<abi> | undefined
   strict?: strict | boolean | undefined
   topics: [signature: Hex, ...args: topics] | []
 }
@@ -89,7 +91,7 @@ export type DecodeEventLogErrorType =
   | DecodeLogTopicsMismatchErrorType
   | DecodeLogDataMismatchErrorType
   | FormatAbiItemErrorType
-  | GetEventSelectorErrorType
+  | ToEventSelectorErrorType
   | ErrorType
 
 const docsPath = '/docs/contract/decodeEventLog'
@@ -114,11 +116,15 @@ export function decodeEventLog<
   const [signature, ...argTopics] = topics
   if (!signature) throw new AbiEventSignatureEmptyTopicsError({ docsPath })
 
-  const abiItem = abi.find(
-    (x) =>
-      x.type === 'event' &&
-      signature === getEventSelector(formatAbiItem(x) as EventDefinition),
-  )
+  const abiItem = (() => {
+    if (abi.length === 1) return abi[0]
+    return abi.find(
+      (x) =>
+        x.type === 'event' &&
+        signature === toEventSelector(formatAbiItem(x) as EventDefinition),
+    )
+  })()
+
   if (!(abiItem && 'name' in abiItem) || abiItem.type !== 'event')
     throw new AbiEventSignatureNotFoundError(signature, { docsPath })
 
@@ -137,7 +143,7 @@ export function decodeEventLog<
         abiItem,
         param: param as AbiParameter & { indexed: boolean },
       })
-    args[param.name || i] = decodeTopic({ param, value: topic })
+    args[isUnnamed ? i : param.name || i] = decodeTopic({ param, value: topic })
   }
 
   // Decode data (non-indexed args).
@@ -156,12 +162,15 @@ export function decodeEventLog<
         }
       } catch (err) {
         if (strict) {
-          if (err instanceof AbiDecodingDataSizeTooSmallError)
+          if (
+            err instanceof AbiDecodingDataSizeTooSmallError ||
+            err instanceof PositionOutOfBoundsError
+          )
             throw new DecodeLogDataMismatch({
               abiItem,
-              data: err.data,
-              params: err.params,
-              size: err.size,
+              data: data,
+              params: nonIndexedInputs,
+              size: size(data),
             })
           throw err
         }

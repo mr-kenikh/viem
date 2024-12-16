@@ -1,9 +1,10 @@
 import { assertType, describe, expect, test, vi } from 'vitest'
 
-import { localWsUrl } from '~test/src/constants.js'
+import { anvilMainnet } from '../../test/src/anvil.js'
 import { localhost, mainnet } from '../chains/index.js'
 import type { EIP1193RequestFn, EIP1474Methods } from '../types/eip1193.js'
-import { createClient } from './createClient.js'
+import { getAction } from '../utils/getAction.js'
+import { type Client, createClient } from './createClient.js'
 import { publicActions } from './decorators/public.js'
 import { createTransport } from './transports/createTransport.js'
 import { custom } from './transports/custom.js'
@@ -30,6 +31,7 @@ test('creates', () => {
       "account": undefined,
       "batch": undefined,
       "cacheTime": 4000,
+      "ccipRead": undefined,
       "chain": undefined,
       "extend": [Function],
       "key": "base",
@@ -63,6 +65,7 @@ describe('transports', () => {
         "account": undefined,
         "batch": undefined,
         "cacheTime": 4000,
+        "ccipRead": undefined,
         "chain": {
           "fees": undefined,
           "formatters": undefined,
@@ -106,7 +109,7 @@ describe('transports', () => {
   test('webSocket', () => {
     const { uid, ...client } = createClient({
       chain: localhost,
-      transport: webSocket(localWsUrl),
+      transport: webSocket(anvilMainnet.rpcUrl.ws),
     })
 
     expect(uid).toBeDefined()
@@ -115,6 +118,7 @@ describe('transports', () => {
         "account": undefined,
         "batch": undefined,
         "cacheTime": 4000,
+        "ccipRead": undefined,
         "chain": {
           "fees": undefined,
           "formatters": undefined,
@@ -140,6 +144,7 @@ describe('transports', () => {
         "pollingInterval": 4000,
         "request": [Function],
         "transport": {
+          "getRpcClient": [Function],
           "getSocket": [Function],
           "key": "webSocket",
           "name": "WebSocket JSON-RPC",
@@ -166,6 +171,7 @@ describe('transports', () => {
         "account": undefined,
         "batch": undefined,
         "cacheTime": 4000,
+        "ccipRead": undefined,
         "chain": undefined,
         "extend": [Function],
         "key": "base",
@@ -207,6 +213,53 @@ describe('config', () => {
         "account": undefined,
         "batch": undefined,
         "cacheTime": 10000,
+        "ccipRead": undefined,
+        "chain": undefined,
+        "extend": [Function],
+        "key": "base",
+        "name": "Base Client",
+        "pollingInterval": 4000,
+        "request": [Function],
+        "transport": {
+          "key": "mock",
+          "name": "Mock Transport",
+          "request": [MockFunction spy],
+          "retryCount": 3,
+          "retryDelay": 150,
+          "timeout": undefined,
+          "type": "mock",
+        },
+        "type": "base",
+      }
+    `)
+  })
+
+  test('ccipRead', () => {
+    const mockTransport = () =>
+      createTransport({
+        key: 'mock',
+        name: 'Mock Transport',
+        request: vi.fn(async () => null) as unknown as EIP1193RequestFn,
+        type: 'mock',
+      })
+    const { uid, ...client } = createClient({
+      ccipRead: {
+        async request(_parameters) {
+          return '0x' as const
+        },
+      },
+      transport: mockTransport,
+    })
+
+    expect(uid).toBeDefined()
+    expect(client).toMatchInlineSnapshot(`
+      {
+        "account": undefined,
+        "batch": undefined,
+        "cacheTime": 4000,
+        "ccipRead": {
+          "request": [Function],
+        },
         "chain": undefined,
         "extend": [Function],
         "key": "base",
@@ -247,6 +300,7 @@ describe('config', () => {
         "account": undefined,
         "batch": undefined,
         "cacheTime": 4000,
+        "ccipRead": undefined,
         "chain": undefined,
         "extend": [Function],
         "key": "bar",
@@ -287,6 +341,7 @@ describe('config', () => {
         "account": undefined,
         "batch": undefined,
         "cacheTime": 4000,
+        "ccipRead": undefined,
         "chain": undefined,
         "extend": [Function],
         "key": "base",
@@ -327,6 +382,7 @@ describe('config', () => {
         "account": undefined,
         "batch": undefined,
         "cacheTime": 10000,
+        "ccipRead": undefined,
         "chain": undefined,
         "extend": [Function],
         "key": "base",
@@ -367,6 +423,7 @@ describe('config', () => {
         "account": undefined,
         "batch": undefined,
         "cacheTime": 4000,
+        "ccipRead": undefined,
         "chain": undefined,
         "extend": [Function],
         "key": "base",
@@ -412,6 +469,7 @@ describe('extends', () => {
         "batch": undefined,
         "cacheTime": 4000,
         "call": [Function],
+        "ccipRead": undefined,
         "chain": {
           "fees": undefined,
           "formatters": undefined,
@@ -441,12 +499,15 @@ describe('extends', () => {
         "estimateMaxPriorityFeePerGas": [Function],
         "extend": [Function],
         "getBalance": [Function],
+        "getBlobBaseFee": [Function],
         "getBlock": [Function],
         "getBlockNumber": [Function],
         "getBlockTransactionCount": [Function],
         "getBytecode": [Function],
         "getChainId": [Function],
+        "getCode": [Function],
         "getContractEvents": [Function],
+        "getEip712Domain": [Function],
         "getEnsAddress": [Function],
         "getEnsAvatar": [Function],
         "getEnsName": [Function],
@@ -486,6 +547,7 @@ describe('extends', () => {
         "type": "base",
         "uninstallFilter": [Function],
         "verifyMessage": [Function],
+        "verifySiweMessage": [Function],
         "verifyTypedData": [Function],
         "waitForTransactionReceipt": [Function],
         "watchBlockNumber": [Function],
@@ -511,5 +573,65 @@ describe('extends', () => {
       // @ts-expect-error
       expect(extended.chain.id).toEqual(client.chain.id)
     })
+  })
+
+  test('action composition', async () => {
+    let calls: string[] = []
+
+    async function getChainId(_client: Client) {
+      calls.push('getChainId:base')
+      return 1337
+    }
+
+    async function estimateGas(client: Client) {
+      calls.push('estimateGas:base')
+      await getAction(client, getChainId, 'getChainId')({})
+      return 1000n
+    }
+
+    const extended = createClient({
+      chain: localhost,
+      transport: http(),
+    })
+      .extend((client) => ({
+        getChainId: () => getChainId(client),
+        estimateGas: () => estimateGas(client),
+      }))
+      .extend((client) => ({
+        async getChainId() {
+          calls.push('getChainId:first')
+          return getAction(client, getChainId, 'getChainId')({})
+        },
+        async estimateGas() {
+          calls.push('estimateGas:first')
+          return getAction(client, estimateGas, 'estimateGas')({})
+        },
+      }))
+      .extend((client) => ({
+        async getChainId() {
+          calls.push('getChainId:second')
+          return getAction(client, getChainId, 'getChainId')({})
+        },
+        async estimateGas() {
+          calls.push('estimateGas:second')
+          return getAction(client, estimateGas, 'estimateGas')({})
+        },
+      }))
+
+    expect(await extended.getChainId()).toBe(1337)
+    expect(calls).toEqual([
+      'getChainId:second',
+      'getChainId:first',
+      'getChainId:base',
+    ])
+
+    calls = []
+    expect(await extended.estimateGas()).toBe(1000n)
+    expect(calls).toEqual([
+      'estimateGas:second',
+      'estimateGas:first',
+      'estimateGas:base',
+      'getChainId:base',
+    ])
   })
 })

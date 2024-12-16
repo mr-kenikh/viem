@@ -33,7 +33,7 @@ export type GetContractEventsParameters<
   toBlock extends BlockNumber | BlockTag | undefined = undefined,
 > = {
   /** The address of the contract. */
-  address?: Address | Address[]
+  address?: Address | Address[] | undefined
   /** Contract ABI. */
   abi: abi
   args?:
@@ -54,16 +54,16 @@ export type GetContractEventsParameters<
 } & (
   | {
       /** Block number or tag after which to include logs */
-      fromBlock?: fromBlock | BlockNumber | BlockTag
+      fromBlock?: fromBlock | BlockNumber | BlockTag | undefined
       /** Block number or tag before which to include logs */
-      toBlock?: toBlock | BlockNumber | BlockTag
+      toBlock?: toBlock | BlockNumber | BlockTag | undefined
       blockHash?: undefined
     }
   | {
       fromBlock?: undefined
       toBlock?: undefined
       /** Hash of block to include logs from */
-      blockHash?: Hash
+      blockHash?: Hash | undefined
     }
 )
 
@@ -89,7 +89,7 @@ export type GetContractEventsErrorType =
 /**
  * Returns a list of event logs emitted by a contract.
  *
- * - Docs: https://viem.sh/docs/actions/public/getContractEvents.html
+ * - Docs: https://viem.sh/docs/actions/public/getContractEvents
  * - JSON-RPC Methods: [`eth_getLogs`](https://ethereum.org/en/developers/docs/apis/json-rpc/#eth_getlogs)
  *
  * @param client - Client to use
@@ -116,20 +116,20 @@ export async function getContractEvents<
   chain extends Chain | undefined,
   const abi extends Abi | readonly unknown[],
   eventName extends ContractEventName<abi> | undefined = undefined,
-  TStrict extends boolean | undefined = undefined,
-  TFromBlock extends BlockNumber | BlockTag | undefined = undefined,
-  TToBlock extends BlockNumber | BlockTag | undefined = undefined,
+  strict extends boolean | undefined = undefined,
+  fromBlock extends BlockNumber | BlockTag | undefined = undefined,
+  toBlock extends BlockNumber | BlockTag | undefined = undefined,
 >(
   client: Client<Transport, chain>,
   parameters: GetContractEventsParameters<
     abi,
     eventName,
-    TStrict,
-    TFromBlock,
-    TToBlock
+    strict,
+    fromBlock,
+    toBlock
   >,
 ): Promise<
-  GetContractEventsReturnType<abi, eventName, TStrict, TFromBlock, TToBlock>
+  GetContractEventsReturnType<abi, eventName, strict, fromBlock, toBlock>
 > {
   const {
     abi,
@@ -163,8 +163,8 @@ export async function getContractEvents<
   } as {} as GetLogsParameters) as unknown as GetContractEventsReturnType<
     abi,
     eventName,
-    TStrict,
-    TFromBlock,
-    TToBlock
+    strict,
+    fromBlock,
+    toBlock
   >
 }

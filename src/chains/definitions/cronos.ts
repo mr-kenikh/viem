@@ -12,7 +12,11 @@ export const cronos = /*#__PURE__*/ defineChain({
     default: { http: ['https://evm.cronos.org'] },
   },
   blockExplorers: {
-    default: { name: 'Cronoscan', url: 'https://cronoscan.com' },
+    default: {
+      name: 'Cronos Explorer',
+      url: 'https://explorer.cronos.org',
+      apiUrl: 'https://explorer-api.cronos.org/mainnet/api',
+    },
   },
   contracts: {
     multicall3: {

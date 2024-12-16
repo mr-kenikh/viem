@@ -10,13 +10,13 @@ type EthereumProvider = { request(...args: any): Promise<any> }
 
 export type CustomTransportConfig = {
   /** The key of the transport. */
-  key?: TransportConfig['key']
+  key?: TransportConfig['key'] | undefined
   /** The name of the transport. */
-  name?: TransportConfig['name']
+  name?: TransportConfig['name'] | undefined
   /** The max number of times to retry. */
-  retryCount?: TransportConfig['retryCount']
+  retryCount?: TransportConfig['retryCount'] | undefined
   /** The base delay (in ms) between retries. */
-  retryDelay?: TransportConfig['retryDelay']
+  retryDelay?: TransportConfig['retryDelay'] | undefined
 }
 
 export type CustomTransport = Transport<
@@ -30,8 +30,8 @@ export type CustomTransportErrorType = CreateTransportErrorType | ErrorType
 /**
  * @description Creates a custom transport given an EIP-1193 compliant `request` attribute.
  */
-export function custom<TProvider extends EthereumProvider>(
-  provider: TProvider,
+export function custom<provider extends EthereumProvider>(
+  provider: provider,
   config: CustomTransportConfig = {},
 ): CustomTransport {
   const { key = 'custom', name = 'Custom Provider', retryDelay } = config

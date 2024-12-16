@@ -1,3 +1,5 @@
+/// <reference types="@types/bun" />
+
 import { join } from 'node:path'
 import { describe, expect, test } from 'bun:test'
 

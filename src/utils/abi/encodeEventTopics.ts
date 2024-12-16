@@ -22,11 +22,11 @@ import type {
 import type { Hex } from '../../types/misc.js'
 import type { IsNarrowable, UnionEvaluate } from '../../types/utils.js'
 import { type ToBytesErrorType, toBytes } from '../encoding/toBytes.js'
-import {
-  type GetEventSelectorErrorType,
-  getEventSelector,
-} from '../hash/getEventSelector.js'
 import { type Keccak256ErrorType, keccak256 } from '../hash/keccak256.js'
+import {
+  type ToEventSelectorErrorType,
+  toEventSelector,
+} from '../hash/toEventSelector.js'
 import {
   type EncodeAbiParametersErrorType,
   encodeAbiParameters,
@@ -60,24 +60,28 @@ export type EncodeEventTopicsParameters<
 } & UnionEvaluate<
   IsNarrowable<abi, Abi> extends true
     ? abi['length'] extends 1
-      ? { eventName?: eventName | allErrorNames }
+      ? { eventName?: eventName | allErrorNames | undefined }
       : { eventName: eventName | allErrorNames }
-    : { eventName?: eventName | allErrorNames }
+    : { eventName?: eventName | allErrorNames | undefined }
 > &
   (hasEvents extends true ? unknown : never)
+
+export type EncodeEventTopicsReturnType = [Hex, ...(Hex | Hex[] | null)[]]
 
 export type EncodeEventTopicsErrorType =
   | AbiEventNotFoundErrorType
   | EncodeArgErrorType
   | FormatAbiItemErrorType
   | GetAbiItemErrorType
-  | GetEventSelectorErrorType
+  | ToEventSelectorErrorType
   | ErrorType
 
 export function encodeEventTopics<
   const abi extends Abi | readonly unknown[],
   eventName extends ContractEventName<abi> | undefined = undefined,
->(parameters: EncodeEventTopicsParameters<abi, eventName>) {
+>(
+  parameters: EncodeEventTopicsParameters<abi, eventName>,
+): EncodeEventTopicsReturnType {
   const { abi, eventName, args } = parameters as EncodeEventTopicsParameters
 
   let abiItem = abi[0]
@@ -91,9 +95,9 @@ export function encodeEventTopics<
     throw new AbiEventNotFoundError(undefined, { docsPath })
 
   const definition = formatAbiItem(abiItem)
-  const signature = getEventSelector(definition as EventDefinition)
+  const signature = toEventSelector(definition as EventDefinition)
 
-  let topics: Hex[] = []
+  let topics: (Hex | Hex[] | null)[] = []
   if (args && 'inputs' in abiItem) {
     const indexedInputs = abiItem.inputs?.filter(
       (param) => 'indexed' in param && param.indexed,
@@ -101,20 +105,18 @@ export function encodeEventTopics<
     const args_ = Array.isArray(args)
       ? args
       : Object.values(args).length > 0
-        ? indexedInputs?.map((x: any) => (args as any)[x.name]) ?? []
+        ? (indexedInputs?.map((x: any) => (args as any)[x.name]) ?? [])
         : []
 
     if (args_.length > 0) {
       topics =
-        indexedInputs?.map((param, i) =>
-          Array.isArray(args_[i])
-            ? args_[i].map((_: any, j: number) =>
-                encodeArg({ param, value: args_[i][j] }),
-              )
-            : args_[i]
-              ? encodeArg({ param, value: args_[i] })
-              : null,
-        ) ?? []
+        indexedInputs?.map((param, i) => {
+          if (Array.isArray(args_[i]))
+            return args_[i].map((_: any, j: number) =>
+              encodeArg({ param, value: args_[i][j] }),
+            )
+          return args_[i] ? encodeArg({ param, value: args_[i] }) : null
+        }) ?? []
     }
   }
   return [signature, ...topics]

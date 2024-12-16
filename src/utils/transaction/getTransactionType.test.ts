@@ -15,6 +15,18 @@ describe('type', () => {
     expect(type).toEqual('eip2930')
   })
 
+  test('eip4844', () => {
+    const type = getTransactionType({ chainId: 1, type: 'eip4844' })
+    assertType<'eip4844'>(type)
+    expect(type).toEqual('eip4844')
+  })
+
+  test('eip7702', () => {
+    const type = getTransactionType({ chainId: 1, type: 'eip7702' })
+    assertType<'eip7702'>(type)
+    expect(type).toEqual('eip7702')
+  })
+
   test('legacy', () => {
     const type = getTransactionType({ type: 'legacy' })
     assertType<'legacy'>(type)
@@ -22,7 +34,7 @@ describe('type', () => {
   })
 
   test('other', () => {
-    const type = getTransactionType({ type: '0x7e' } as const)
+    const type = getTransactionType({ type: '0x7e' })
     assertType<'0x7e'>(type)
     expect(type).toEqual('0x7e')
   })
@@ -70,6 +82,44 @@ describe('attributes', () => {
     expect(type).toEqual('eip2930')
   })
 
+  test('eip4844', () => {
+    const type = getTransactionType({
+      blobs: ['0x'],
+      chainId: 1,
+    })
+    assertType<'eip4844'>(type)
+    expect(type).toEqual('eip4844')
+  })
+
+  test('eip4844 with eip1559 properties', () => {
+    const type = getTransactionType({
+      blobs: ['0x'],
+      maxFeePerGas: 1n,
+      chainId: 1,
+    })
+    assertType<'eip4844'>(type)
+    expect(type).toEqual('eip4844')
+  })
+
+  test('eip7702', () => {
+    const type = getTransactionType({
+      authorizationList: [],
+      chainId: 1,
+    })
+    assertType<'eip7702'>(type)
+    expect(type).toEqual('eip7702')
+  })
+
+  test('eip7702 with eip1559 properties', () => {
+    const type = getTransactionType({
+      authorizationList: [],
+      maxFeePerGas: 1n,
+      chainId: 1,
+    })
+    assertType<'eip7702'>(type)
+    expect(type).toEqual('eip7702')
+  })
+
   test('legacy', () => {
     const type = getTransactionType({ gasPrice: 1n })
     assertType<'legacy'>(type)
@@ -102,8 +152,10 @@ test('invalid', () => {
     - a \`type\` to the Transaction, or
     - an EIP-1559 Transaction with \`maxFeePerGas\`, or
     - an EIP-2930 Transaction with \`gasPrice\` & \`accessList\`, or
+    - an EIP-4844 Transaction with \`blobs\`, \`blobVersionedHashes\`, \`sidecars\`, or
+    - an EIP-7702 Transaction with \`authorizationList\`, or
     - a Legacy Transaction with \`gasPrice\`
 
-    Version: viem@1.0.2]
+    Version: viem@x.y.z]
   `)
 })

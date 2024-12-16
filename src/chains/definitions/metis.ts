@@ -13,8 +13,10 @@ export const metis = /*#__PURE__*/ defineChain({
   },
   blockExplorers: {
     default: {
-      name: 'Andromeda Explorer',
-      url: 'https://andromeda-explorer.metis.io',
+      name: 'Metis Explorer',
+      url: 'https://explorer.metis.io',
+      apiUrl:
+        'https://api.routescan.io/v2/network/mainnet/evm/1088/etherscan/api',
     },
   },
   contracts: {

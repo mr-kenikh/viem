@@ -1,25 +1,110 @@
 import { assertType, describe, expect, test, vi } from 'vitest'
 
 import { accounts } from '~test/src/constants.js'
-import { concatHex, toHex, toRlp } from '../../index.js'
+import { wagmiContractConfig } from '../../../test/src/abis.js'
+import { anvilMainnet } from '../../../test/src/anvil.js'
+import { blobData, kzg } from '../../../test/src/kzg.js'
+import { prepareTransactionRequest } from '../../actions/index.js'
+import { concatHex, stringToHex, toHex, toRlp } from '../../index.js'
 import type {
   TransactionSerializable,
   TransactionSerializableBase,
   TransactionSerializableEIP1559,
   TransactionSerializableEIP2930,
+  TransactionSerializableGeneric,
   TransactionSerializableLegacy,
-  TransactionSerializedEIP1559,
-  TransactionSerializedEIP2930,
   TransactionSerializedLegacy,
 } from '../../types/transaction.js'
+import { sidecarsToVersionedHashes } from '../../utils/blob/sidecarsToVersionedHashes.js'
+import { toBlobSidecars } from '../../utils/blob/toBlobSidecars.js'
+import { toBlobs } from '../../utils/blob/toBlobs.js'
 import type { SerializeTransactionFn } from '../../utils/transaction/serializeTransaction.js'
 import { parseGwei } from '../../utils/unit/parseGwei.js'
+import { privateKeyToAccount } from '../privateKeyToAccount.js'
 import { signTransaction } from './signTransaction.js'
+
+const client = anvilMainnet.getClient()
 
 const base = {
   gas: 21000n,
   nonce: 785,
 } satisfies TransactionSerializableBase
+
+describe('eip7702', async () => {
+  const account = privateKeyToAccount(accounts[0].privateKey)
+  const signedAuthorization_1 = await account.experimental_signAuthorization({
+    contractAddress: wagmiContractConfig.address,
+    chainId: 1,
+    nonce: 420,
+  })
+  const signedAuthorization_2 = await account.experimental_signAuthorization({
+    contractAddress: wagmiContractConfig.address,
+    chainId: 10,
+    nonce: 69,
+  })
+
+  const baseEip7702 = {
+    ...base,
+    authorizationList: [signedAuthorization_1, signedAuthorization_2],
+    chainId: 1,
+    type: 'eip7702',
+  } as const satisfies TransactionSerializable
+
+  test('default', async () => {
+    const signature = await signTransaction({
+      transaction: baseEip7702,
+      privateKey: accounts[0].privateKey,
+    })
+    expect(signature).toMatchInlineSnapshot(
+      `"0x04f9010b018203118080825208808080c0f8baf85c0194fba3912ca04dd458c843e2ee08967fc04f3579c28201a401a0f6beafe7507f0c98ae9bc8d9e15d6b53c2f0714ccfc01663f658cb9f29caced4a00dc4dfc53537f8b09047eceb674c454acba020ce786d9004175f41669304dee0f85a0a94fba3912ca04dd458c843e2ee08967fc04f3579c24501a0c3fea6e0bd0f5743d6e2f2df8f1aa63ff262a6636ca96ac572da3ea5cd33344ca02a4f006f9a0cf7cd5f5528af86524c984b05a8446c8c124aede1d3531e91de9180a0c3d5845755debbe90b2fa6258ba04ec93c46bfb7b2657b66a11d8c7c5221ac939fbf44fdacf9e9f87b5074df6ba1f3f9c50c82d5b0be8e4e96686410ca405a30"`,
+    )
+  })
+})
+
+describe('eip4844', async () => {
+  const sidecars = toBlobSidecars({ data: stringToHex('abcd'), kzg })
+  const blobVersionedHashes = sidecarsToVersionedHashes({ sidecars })
+
+  const baseEip4844 = {
+    ...base,
+    blobVersionedHashes,
+    chainId: 1,
+    sidecars,
+    type: 'eip4844',
+  } as const satisfies TransactionSerializable
+
+  test('default', async () => {
+    const signature = await signTransaction({
+      transaction: baseEip4844,
+      privateKey: accounts[0].privateKey,
+    })
+    expect(signature).toMatchSnapshot()
+  })
+
+  test('args: blobs + kzg', async () => {
+    const blobs = toBlobs({ data: stringToHex(blobData) })
+    const signature = await signTransaction({
+      transaction: { ...base, blobs, chainId: 1, kzg, type: 'eip4844' },
+      privateKey: accounts[0].privateKey,
+    })
+    expect(signature).toMatchSnapshot()
+  })
+
+  test('w/ prepareTransactionRequest', async () => {
+    const blobs = toBlobs({ data: stringToHex(blobData) })
+    const request = await prepareTransactionRequest(client, {
+      account: privateKeyToAccount(accounts[0].privateKey),
+      blobs: blobs,
+      kzg,
+      maxFeePerBlobGas: parseGwei('20'),
+      to: '0x0000000000000000000000000000000000000000',
+    })
+    await signTransaction({
+      transaction: request,
+      privateKey: accounts[0].privateKey,
+    })
+  })
+})
 
 describe('eip1559', () => {
   const baseEip1559 = {
@@ -33,7 +118,6 @@ describe('eip1559', () => {
       transaction: baseEip1559,
       privateKey: accounts[0].privateKey,
     })
-    assertType<TransactionSerializedEIP1559>(signature)
     expect(signature).toMatchInlineSnapshot(
       '"0x02f850018203118080825208808080c080a04012522854168b27e5dc3d5839bab5e6b39e1a0ffd343901ce1622e3d64b48f1a04e00902ae0502c4728cbf12156290df99c3ed7de85b1dbfe20b5c36931733a33"',
     )
@@ -139,7 +223,6 @@ describe('eip2930', () => {
       transaction: baseEip2930,
       privateKey: accounts[0].privateKey,
     })
-    assertType<TransactionSerializedEIP2930>(signature)
     expect(signature).toMatchInlineSnapshot(
       '"0x01f84f0182031180825208808080c080a089cebce5c7f728febd1060b55837c894ec2a79dd7854350abce252fc2de96b5da039f2782c70b92f4b1916aa8db91453c7229f33458bd091b3e10a40f9a7e443d2"',
     )
@@ -242,8 +325,8 @@ describe('eip2930', () => {
 })
 
 describe('with custom EIP2718 serializer', () => {
-  type ExampleTransaction = TransactionSerializable & {
-    type: 'cip42'
+  type ExampleTransaction = Omit<TransactionSerializableGeneric, 'type'> & {
+    type: 'cip64'
     chainId: number
     additionalField: `0x${string}`
   }
@@ -264,7 +347,7 @@ describe('with custom EIP2718 serializer', () => {
         } = transaction
 
         const serializedTransaction = [
-          toHex(chainId),
+          chainId ? toHex(chainId) : '0x',
           nonce ? toHex(nonce) : '0x',
           maxPriorityFeePerGas ? toHex(maxPriorityFeePerGas) : '0x',
           maxFeePerGas ? toHex(maxFeePerGas) : '0x',
@@ -282,7 +365,7 @@ describe('with custom EIP2718 serializer', () => {
 
     const example2718Transaction: ExampleTransaction = {
       ...base,
-      type: 'cip42',
+      type: 'cip64',
       additionalField: '0x0000',
       chainId: 42240,
     }

@@ -30,11 +30,12 @@ import {
 } from '../errors/rpc.js'
 
 import { buildRequest, shouldRetry } from './buildRequest.js'
-import { rpc } from './rpc.js'
+import { getHttpRpcClient } from './rpc/http.js'
 
 function request(url: string) {
+  const httpClient = getHttpRpcClient(url)
   return async ({ method, params }: any) => {
-    const { error, result } = await rpc.http(url, {
+    const { error, result } = await httpClient.request({
       body: {
         method,
         params,
@@ -51,16 +52,63 @@ function request(url: string) {
 }
 
 test('default', async () => {
-  const server = await createHttpServer((_req, res) => {
-    res.writeHead(200, {
-      'Content-Type': 'application/json',
+  const args: string[] = []
+  const server = await createHttpServer((req, res) => {
+    let body = ''
+    req.on('data', (chunk) => {
+      body += chunk
     })
-    res.end(JSON.stringify({ result: '0x1' }))
+    req.on('end', () => {
+      args.push(body)
+      res.writeHead(200, {
+        'Content-Type': 'application/json',
+      })
+      res.end(JSON.stringify({ result: body }))
+    })
   })
 
+  const request_ = buildRequest(request(server.url))
+
+  const results = await Promise.all([
+    request_({ method: 'eth_a' }),
+    request_({ method: 'eth_b' }),
+    request_({ method: 'eth_a', params: [1] }),
+    request_({ method: 'eth_c' }),
+    request_({ method: 'eth_d' }),
+    request_({ method: 'eth_a', params: [2] }),
+    request_({ method: 'eth_a' }),
+    request_({ method: 'eth_a' }),
+  ])
+
   expect(
-    await buildRequest(request(server.url))({ method: 'eth_blockNumber' }),
-  ).toMatchInlineSnapshot('"0x1"')
+    args
+      .map((arg) => JSON.parse(arg))
+      .sort((a, b) => a.id - b.id)
+      .map((arg) => JSON.stringify(arg)),
+  ).toMatchInlineSnapshot(`
+    [
+      "{"jsonrpc":"2.0","id":1,"method":"eth_a"}",
+      "{"jsonrpc":"2.0","id":2,"method":"eth_b"}",
+      "{"jsonrpc":"2.0","id":3,"method":"eth_a","params":[1]}",
+      "{"jsonrpc":"2.0","id":4,"method":"eth_c"}",
+      "{"jsonrpc":"2.0","id":5,"method":"eth_d"}",
+      "{"jsonrpc":"2.0","id":6,"method":"eth_a","params":[2]}",
+      "{"jsonrpc":"2.0","id":7,"method":"eth_a"}",
+      "{"jsonrpc":"2.0","id":8,"method":"eth_a"}",
+    ]
+  `)
+  expect(results).toMatchInlineSnapshot(`
+    [
+      "{"jsonrpc":"2.0","id":1,"method":"eth_a"}",
+      "{"jsonrpc":"2.0","id":2,"method":"eth_b"}",
+      "{"jsonrpc":"2.0","id":3,"method":"eth_a","params":[1]}",
+      "{"jsonrpc":"2.0","id":4,"method":"eth_c"}",
+      "{"jsonrpc":"2.0","id":5,"method":"eth_d"}",
+      "{"jsonrpc":"2.0","id":6,"method":"eth_a","params":[2]}",
+      "{"jsonrpc":"2.0","id":7,"method":"eth_a"}",
+      "{"jsonrpc":"2.0","id":8,"method":"eth_a"}",
+    ]
+  `)
 })
 
 describe('args', () => {
@@ -144,10 +192,10 @@ describe('behavior', () => {
           Promise.reject(new BaseError('foo', { details: 'bar' })),
         )({ method: 'eth_test' }),
       ).rejects.toThrowErrorMatchingInlineSnapshot(`
-        [ViemError: foo
+        [BaseError: foo
 
         Details: bar
-        Version: viem@1.0.2]
+        Version: viem@x.y.z]
       `)
     })
 
@@ -172,7 +220,7 @@ describe('behavior', () => {
         Request body: {"method":"eth_blockNumber"}
 
         Details: message
-        Version: viem@1.0.2]
+        Version: viem@x.y.z]
       `)
     })
 
@@ -197,7 +245,7 @@ describe('behavior', () => {
         Request body: {"method":"eth_blockNumber"}
 
         Details: message
-        Version: viem@1.0.2]
+        Version: viem@x.y.z]
       `)
     })
 
@@ -216,13 +264,13 @@ describe('behavior', () => {
       await expect(() =>
         buildRequest(request(server.url))({ method: 'eth_blockNumber' }),
       ).rejects.toThrowErrorMatchingInlineSnapshot(`
-        [MethodNotFoundRpcError: The method does not exist / is not available.
+        [MethodNotFoundRpcError: The method "eth_blockNumber" does not exist / is not available.
 
         URL: http://localhost
         Request body: {"method":"eth_blockNumber"}
 
         Details: message
-        Version: viem@1.0.2]
+        Version: viem@x.y.z]
       `)
     })
 
@@ -248,7 +296,7 @@ describe('behavior', () => {
         Request body: {"method":"eth_blockNumber"}
 
         Details: message
-        Version: viem@1.0.2]
+        Version: viem@x.y.z]
       `)
     })
 
@@ -273,7 +321,7 @@ describe('behavior', () => {
         Request body: {"method":"eth_blockNumber"}
 
         Details: message
-        Version: viem@1.0.2]
+        Version: viem@x.y.z]
       `)
     })
 
@@ -299,7 +347,7 @@ describe('behavior', () => {
         Request body: {"method":"eth_blockNumber"}
 
         Details: message
-        Version: viem@1.0.2]
+        Version: viem@x.y.z]
       `)
     })
 
@@ -324,7 +372,7 @@ describe('behavior', () => {
         Request body: {"method":"eth_blockNumber"}
 
         Details: message
-        Version: viem@1.0.2]
+        Version: viem@x.y.z]
       `)
     })
 
@@ -352,7 +400,7 @@ describe('behavior', () => {
         Request body: {"method":"eth_blockNumber"}
 
         Details: message
-        Version: viem@1.0.2]
+        Version: viem@x.y.z]
       `)
     })
 
@@ -381,7 +429,7 @@ describe('behavior', () => {
         Request body: {"method":"eth_blockNumber"}
 
         Details: message
-        Version: viem@1.0.2]
+        Version: viem@x.y.z]
       `,
       )
     })
@@ -404,13 +452,13 @@ describe('behavior', () => {
       await expect(() =>
         buildRequest(request(server.url))({ method: 'eth_blockNumber' }),
       ).rejects.toThrowErrorMatchingInlineSnapshot(`
-        [MethodNotSupportedRpcError: Method is not implemented.
+        [MethodNotSupportedRpcError: Method "eth_blockNumber" is not implemented.
 
         URL: http://localhost
         Request body: {"method":"eth_blockNumber"}
 
         Details: message
-        Version: viem@1.0.2]
+        Version: viem@x.y.z]
       `)
     })
 
@@ -435,7 +483,7 @@ describe('behavior', () => {
         Request body: {"method":"eth_blockNumber"}
 
         Details: message
-        Version: viem@1.0.2]
+        Version: viem@x.y.z]
       `)
     })
 
@@ -463,7 +511,7 @@ describe('behavior', () => {
         Request body: {"method":"eth_blockNumber"}
 
         Details: message
-        Version: viem@1.0.2]
+        Version: viem@x.y.z]
       `)
     })
 
@@ -488,7 +536,7 @@ describe('behavior', () => {
         Request body: {"method":"eth_blockNumber"}
 
         Details: message
-        Version: viem@1.0.2]
+        Version: viem@x.y.z]
       `)
     })
 
@@ -513,7 +561,7 @@ describe('behavior', () => {
         Request body: {"method":"eth_blockNumber"}
 
         Details: message
-        Version: viem@1.0.2]
+        Version: viem@x.y.z]
       `)
     })
 
@@ -538,7 +586,7 @@ describe('behavior', () => {
         Request body: {"method":"eth_blockNumber"}
 
         Details: message
-        Version: viem@1.0.2]
+        Version: viem@x.y.z]
       `)
     })
 
@@ -566,7 +614,7 @@ describe('behavior', () => {
         Request body: {"method":"eth_blockNumber"}
 
         Details: message
-        Version: viem@1.0.2]
+        Version: viem@x.y.z]
       `)
     })
 
@@ -591,7 +639,7 @@ describe('behavior', () => {
         Request body: {"method":"eth_blockNumber"}
 
         Details: message
-        Version: viem@1.0.2]
+        Version: viem@x.y.z]
       `)
     })
 
@@ -616,7 +664,7 @@ describe('behavior', () => {
         Request body: {"method":"eth_blockNumber"}
 
         Details: message
-        Version: viem@1.0.2]
+        Version: viem@x.y.z]
       `)
     })
 
@@ -641,7 +689,7 @@ describe('behavior', () => {
         Request body: {"method":"eth_blockNumber"}
 
         Details: message
-        Version: viem@1.0.2]
+        Version: viem@x.y.z]
       `)
     })
 
@@ -667,7 +715,7 @@ describe('behavior', () => {
         Request body: {"method":"eth_blockNumber"}
 
         Details: message
-        Version: viem@1.0.2]
+        Version: viem@x.y.z]
       `)
     })
 
@@ -680,7 +728,7 @@ describe('behavior', () => {
         [UnknownRpcError: An unknown RPC error occurred.
 
         Details: wat
-        Version: viem@1.0.2]
+        Version: viem@x.y.z]
       `)
     })
 
@@ -703,9 +751,69 @@ describe('behavior', () => {
         Request body: {"foo":"bar"}
 
         Details: The request timed out.
-        Version: viem@1.0.2]
+        Version: viem@x.y.z]
       `)
     })
+  })
+
+  test('dedupes requests', async () => {
+    const args: string[] = []
+    const server = await createHttpServer((req, res) => {
+      let body = ''
+      req.on('data', (chunk) => {
+        body += chunk
+      })
+      req.on('end', () => {
+        args.push(body)
+        res.writeHead(200, {
+          'Content-Type': 'application/json',
+        })
+        res.end(JSON.stringify({ result: body }))
+      })
+    })
+
+    const uid = 'foo'
+    const request_ = buildRequest(request(server.url), { uid })
+
+    const results = await Promise.all([
+      request_({ method: 'eth_blockNumber' }, { dedupe: true }),
+      request_({ method: 'eth_blockNumber' }, { dedupe: true }),
+      // this will not be deduped (different params).
+      request_({ method: 'eth_blockNumber', params: [1] }, { dedupe: true }),
+      request_({ method: 'eth_blockNumber' }, { dedupe: true }),
+      // this will not be deduped (different method).
+      request_({ method: 'eth_chainId' }, { dedupe: true }),
+      request_({ method: 'eth_blockNumber' }, { dedupe: true }),
+      // this will not be deduped (dedupe: undefined).
+      request_({ method: 'eth_blockNumber' }),
+      request_({ method: 'eth_blockNumber' }, { dedupe: true }),
+    ])
+
+    expect(
+      args
+        .map((arg) => JSON.parse(arg))
+        .sort((a, b) => a.id - b.id)
+        .map((arg) => JSON.stringify(arg)),
+    ).toMatchInlineSnapshot(`
+      [
+        "{"jsonrpc":"2.0","id":68,"method":"eth_blockNumber"}",
+        "{"jsonrpc":"2.0","id":69,"method":"eth_blockNumber","params":[1]}",
+        "{"jsonrpc":"2.0","id":70,"method":"eth_chainId"}",
+        "{"jsonrpc":"2.0","id":71,"method":"eth_blockNumber"}",
+      ]
+    `)
+    expect(results).toMatchInlineSnapshot(`
+      [
+        "{"jsonrpc":"2.0","id":68,"method":"eth_blockNumber"}",
+        "{"jsonrpc":"2.0","id":68,"method":"eth_blockNumber"}",
+        "{"jsonrpc":"2.0","id":69,"method":"eth_blockNumber","params":[1]}",
+        "{"jsonrpc":"2.0","id":68,"method":"eth_blockNumber"}",
+        "{"jsonrpc":"2.0","id":70,"method":"eth_chainId"}",
+        "{"jsonrpc":"2.0","id":68,"method":"eth_blockNumber"}",
+        "{"jsonrpc":"2.0","id":71,"method":"eth_blockNumber"}",
+        "{"jsonrpc":"2.0","id":68,"method":"eth_blockNumber"}",
+      ]
+    `)
   })
 
   describe('retry', () => {
@@ -782,7 +890,7 @@ describe('behavior', () => {
         Request body: {"method":"eth_blockNumber"}
 
         Details: Internal Server Error
-        Version: viem@1.0.2]
+        Version: viem@x.y.z]
       `)
       expect(retryCount).toBe(3)
     })
@@ -808,7 +916,7 @@ describe('behavior', () => {
         Request body: {"method":"eth_blockNumber"}
 
         Details: Internal Server Error
-        Version: viem@1.0.2]
+        Version: viem@x.y.z]
       `)
       expect(retryCount).toBe(3)
     })
@@ -833,7 +941,7 @@ describe('behavior', () => {
         Request body: {"method":"eth_blockNumber"}
 
         Details: Forbidden
-        Version: viem@1.0.2]
+        Version: viem@x.y.z]
       `)
       expect(retryCount).toBe(3)
     })
@@ -858,7 +966,7 @@ describe('behavior', () => {
         Request body: {"method":"eth_blockNumber"}
 
         Details: Request Timeout
-        Version: viem@1.0.2]
+        Version: viem@x.y.z]
       `)
       expect(retryCount).toBe(3)
     })
@@ -883,7 +991,7 @@ describe('behavior', () => {
         Request body: {"method":"eth_blockNumber"}
 
         Details: Payload Too Large
-        Version: viem@1.0.2]
+        Version: viem@x.y.z]
       `)
       expect(retryCount).toBe(3)
     })
@@ -908,7 +1016,7 @@ describe('behavior', () => {
         Request body: {"method":"eth_blockNumber"}
 
         Details: Request Timeout
-        Version: viem@1.0.2]
+        Version: viem@x.y.z]
       `)
       expect(retryCount).toBe(3)
     })

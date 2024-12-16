@@ -2,10 +2,10 @@ import { defineChain } from '../../utils/chain/defineChain.js'
 
 export const songbird = /*#__PURE__*/ defineChain({
   id: 19,
-  name: 'Songbird Mainnet',
+  name: 'Songbird Canary-Network',
   nativeCurrency: {
     decimals: 18,
-    name: 'songbird',
+    name: 'Songbird',
     symbol: 'SGB',
   },
   rpcUrls: {
@@ -15,6 +15,7 @@ export const songbird = /*#__PURE__*/ defineChain({
     default: {
       name: 'Songbird Explorer',
       url: 'https://songbird-explorer.flare.network',
+      apiUrl: 'https://songbird-explorer.flare.network/api',
     },
   },
 })

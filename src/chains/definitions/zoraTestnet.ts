@@ -1,5 +1,5 @@
+import { chainConfig } from '../../op-stack/chainConfig.js'
 import { defineChain } from '../../utils/chain/defineChain.js'
-import { chainConfig } from '../opStack/chainConfig.js'
 
 const sourceId = 5 // goerli
 
@@ -22,6 +22,7 @@ export const zoraTestnet = /*#__PURE__*/ defineChain({
     default: {
       name: 'Explorer',
       url: 'https://testnet.explorer.zora.energy',
+      apiUrl: 'https://testnet.explorer.zora.energy/api',
     },
   },
   contracts: {

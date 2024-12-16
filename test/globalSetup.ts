@@ -1,7 +1,5 @@
-import { startProxy } from '@viem/anvil'
-
-import { forkBlockNumber, forkUrl } from './src/constants.js'
-import { forkBlockNumberOptimism, forkUrlOptimism } from './src/opStack.js'
+import * as executionInstances from './src/anvil.js'
+import * as bundlerInstances from './src/bundler.js'
 
 export default async function () {
   if (process.env.SKIP_GLOBAL_SETUP) return
@@ -24,23 +22,9 @@ export default async function () {
   // We still need to remember to reset the anvil instance between test files. This is generally
   // handled in `setup.ts` but may require additional resetting (e.g. via `afterAll`), in case of
   // any custom per-test adjustments that persist beyond `anvil_reset`.
-  const shutdown_1 = await startProxy({
-    port: Number(process.env.VITE_ANVIL_PORT_OPTIMISM || '8645'),
-    options: {
-      forkUrl: forkUrlOptimism,
-      forkBlockNumber: forkBlockNumberOptimism,
-    },
-  })
-  const shutdown_2 = await startProxy({
-    port: Number(process.env.VITE_ANVIL_PORT || '8545'),
-    options: {
-      forkUrl,
-      forkBlockNumber,
-      noMining: true,
-    },
-  })
-  return () => {
-    shutdown_1()
-    shutdown_2()
-  }
+  const shutdown = await Promise.all([
+    ...Object.values(executionInstances).map((instance) => instance.start()),
+    ...Object.values(bundlerInstances).map((instance) => instance.start()),
+  ])
+  return () => Promise.all(shutdown.map((fn) => fn()))
 }

@@ -4,6 +4,8 @@ import type {
   TransactionRequest,
   TransactionRequestEIP1559,
   TransactionRequestEIP2930,
+  TransactionRequestEIP4844,
+  TransactionRequestEIP7702,
   TransactionRequestLegacy,
 } from '../../types/transaction.js'
 
@@ -34,8 +36,6 @@ test('legacy transaction', () => {
       "from": "0x1",
       "gas": "0x4234584",
       "gasPrice": "0x45",
-      "maxFeePerGas": undefined,
-      "maxPriorityFeePerGas": undefined,
       "nonce": "0x1",
       "to": "0x1",
       "type": "0x0",
@@ -71,8 +71,6 @@ test('eip2930 transaction', () => {
       "from": "0x1",
       "gas": "0x4234584",
       "gasPrice": "0x45",
-      "maxFeePerGas": undefined,
-      "maxPriorityFeePerGas": undefined,
       "nonce": "0x1",
       "to": "0x1",
       "type": "0x1",
@@ -108,12 +106,139 @@ test('eip1559 transaction', () => {
       "data": "0x1",
       "from": "0x1",
       "gas": "0x4234584",
-      "gasPrice": undefined,
       "maxFeePerGas": "0x45",
       "maxPriorityFeePerGas": "0x45",
       "nonce": "0x1",
       "to": "0x1",
       "type": "0x2",
+      "value": "0x1",
+    }
+  `)
+})
+
+test('eip4844 transaction', () => {
+  expect(
+    formatTransactionRequest({
+      ...base,
+      blobs: ['0xabc'],
+      from: '0x0000000000000000000000000000000000000000',
+      maxFeePerBlobGas: 69n,
+      type: 'eip4844',
+    } as TransactionRequestEIP4844),
+  ).toMatchInlineSnapshot(`
+    {
+      "blobs": [
+        "0xabc",
+      ],
+      "data": "0x1",
+      "from": "0x0000000000000000000000000000000000000000",
+      "gas": "0x4234584",
+      "maxFeePerBlobGas": "0x45",
+      "nonce": "0x1",
+      "to": "0x1",
+      "type": "0x3",
+      "value": "0x1",
+    }
+  `)
+
+  expect(
+    formatTransactionRequest({
+      ...base,
+      blobs: [Uint8Array.from([0xab, 0xc])],
+      from: '0x0000000000000000000000000000000000000000',
+      maxFeePerBlobGas: 69n,
+      type: 'eip4844',
+    } as TransactionRequestEIP4844),
+  ).toMatchInlineSnapshot(`
+    {
+      "blobs": [
+        "0xab0c",
+      ],
+      "data": "0x1",
+      "from": "0x0000000000000000000000000000000000000000",
+      "gas": "0x4234584",
+      "maxFeePerBlobGas": "0x45",
+      "nonce": "0x1",
+      "to": "0x1",
+      "type": "0x3",
+      "value": "0x1",
+    }
+  `)
+})
+
+test('eip7702 transaction', () => {
+  expect(
+    formatTransactionRequest({
+      ...base,
+      authorizationList: [
+        {
+          contractAddress: '0x0000000000000000000000000000000000000000',
+          chainId: 1,
+          nonce: 0,
+          r: '0x1',
+          s: '0x1',
+          v: 27n,
+        },
+      ],
+      from: '0x0000000000000000000000000000000000000000',
+      type: 'eip7702',
+    } as TransactionRequestEIP7702),
+  ).toMatchInlineSnapshot(`
+    {
+      "authorizationList": [
+        {
+          "address": "0x0000000000000000000000000000000000000000",
+          "chainId": "0x1",
+          "nonce": "0x0",
+          "r": "0x1",
+          "s": "0x1",
+          "v": "0x1b",
+        },
+      ],
+      "data": "0x1",
+      "from": "0x0000000000000000000000000000000000000000",
+      "gas": "0x4234584",
+      "nonce": "0x1",
+      "to": "0x1",
+      "type": "0x4",
+      "value": "0x1",
+    }
+  `)
+
+  expect(
+    formatTransactionRequest({
+      ...base,
+      authorizationList: [
+        {
+          contractAddress: '0x0000000000000000000000000000000000000000',
+          chainId: 1,
+          nonce: 0,
+          r: '0x1',
+          s: '0x1',
+          yParity: 0,
+        },
+      ],
+      from: '0x0000000000000000000000000000000000000000',
+      type: 'eip7702',
+    } as TransactionRequestEIP7702),
+  ).toMatchInlineSnapshot(`
+    {
+      "authorizationList": [
+        {
+          "address": "0x0000000000000000000000000000000000000000",
+          "chainId": "0x1",
+          "nonce": "0x0",
+          "r": "0x1",
+          "s": "0x1",
+          "yParity": "0x0",
+        },
+      ],
+      "data": "0x1",
+      "from": "0x0000000000000000000000000000000000000000",
+      "gas": "0x4234584",
+      "nonce": "0x1",
+      "to": "0x1",
+      "type": "0x4",
       "value": "0x1",
     }
   `)
@@ -129,13 +254,8 @@ test('nullish gas', () => {
     {
       "data": "0x1",
       "from": "0x1",
-      "gas": undefined,
-      "gasPrice": undefined,
-      "maxFeePerGas": undefined,
-      "maxPriorityFeePerGas": undefined,
       "nonce": "0x1",
       "to": "0x1",
-      "type": undefined,
       "value": "0x1",
     }
   `)
@@ -152,12 +272,8 @@ test('nullish gasPrice', () => {
       "data": "0x1",
       "from": "0x1",
       "gas": "0x4234584",
-      "gasPrice": undefined,
-      "maxFeePerGas": undefined,
-      "maxPriorityFeePerGas": undefined,
       "nonce": "0x1",
       "to": "0x1",
-      "type": undefined,
       "value": "0x1",
     }
   `)
@@ -174,12 +290,8 @@ test('nullish maxFeePerGas', () => {
       "data": "0x1",
       "from": "0x1",
       "gas": "0x4234584",
-      "gasPrice": undefined,
-      "maxFeePerGas": undefined,
-      "maxPriorityFeePerGas": undefined,
       "nonce": "0x1",
       "to": "0x1",
-      "type": undefined,
       "value": "0x1",
     }
   `)
@@ -196,12 +308,8 @@ test('nullish maxPriorityFeePerGas', () => {
       "data": "0x1",
       "from": "0x1",
       "gas": "0x4234584",
-      "gasPrice": undefined,
-      "maxFeePerGas": undefined,
-      "maxPriorityFeePerGas": undefined,
       "nonce": "0x1",
       "to": "0x1",
-      "type": undefined,
       "value": "0x1",
     }
   `)
@@ -218,12 +326,7 @@ test('nullish nonce', () => {
       "data": "0x1",
       "from": "0x1",
       "gas": "0x4234584",
-      "gasPrice": undefined,
-      "maxFeePerGas": undefined,
-      "maxPriorityFeePerGas": undefined,
-      "nonce": undefined,
       "to": "0x1",
-      "type": undefined,
       "value": "0x1",
     }
   `)
@@ -240,13 +343,8 @@ test('nullish value', () => {
       "data": "0x1",
       "from": "0x1",
       "gas": "0x4234584",
-      "gasPrice": undefined,
-      "maxFeePerGas": undefined,
-      "maxPriorityFeePerGas": undefined,
       "nonce": "0x1",
       "to": "0x1",
-      "type": undefined,
-      "value": undefined,
     }
   `)
 })
@@ -256,6 +354,8 @@ test('rpcTransactionType', () => {
     {
       "eip1559": "0x2",
       "eip2930": "0x1",
+      "eip4844": "0x3",
+      "eip7702": "0x4",
       "legacy": "0x0",
     }
   `)

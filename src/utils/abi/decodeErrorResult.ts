@@ -17,9 +17,9 @@ import type { Hex } from '../../types/misc.js'
 import type { IsNarrowable, UnionEvaluate } from '../../types/utils.js'
 import { slice } from '../data/slice.js'
 import {
-  type GetFunctionSelectorErrorType,
-  getFunctionSelector,
-} from '../hash/getFunctionSelector.js'
+  type ToFunctionSelectorErrorType,
+  toFunctionSelector,
+} from '../hash/toFunctionSelector.js'
 import {
   type DecodeAbiParametersErrorType,
   decodeAbiParameters,
@@ -59,12 +59,12 @@ export type DecodeErrorResultErrorType =
   | AbiErrorSignatureNotFoundErrorType
   | DecodeAbiParametersErrorType
   | FormatAbiItemErrorType
-  | GetFunctionSelectorErrorType
+  | ToFunctionSelectorErrorType
   | ErrorType
 
-export function decodeErrorResult<const TAbi extends Abi | readonly unknown[]>(
-  parameters: DecodeErrorResultParameters<TAbi>,
-): DecodeErrorResultReturnType<TAbi> {
+export function decodeErrorResult<const abi extends Abi | readonly unknown[]>(
+  parameters: DecodeErrorResultParameters<abi>,
+): DecodeErrorResultReturnType<abi> {
   const { abi, data } = parameters as DecodeErrorResultParameters
 
   const signature = slice(data, 0, 4)
@@ -73,7 +73,7 @@ export function decodeErrorResult<const TAbi extends Abi | readonly unknown[]>(
   const abi_ = [...(abi || []), solidityError, solidityPanic]
   const abiItem = abi_.find(
     (x) =>
-      x.type === 'error' && signature === getFunctionSelector(formatAbiItem(x)),
+      x.type === 'error' && signature === toFunctionSelector(formatAbiItem(x)),
   )
   if (!abiItem)
     throw new AbiErrorSignatureNotFoundError(signature, {
@@ -86,5 +86,5 @@ export function decodeErrorResult<const TAbi extends Abi | readonly unknown[]>(
         ? decodeAbiParameters(abiItem.inputs, slice(data, 4))
         : undefined,
     errorName: (abiItem as { name: string }).name,
-  } as DecodeErrorResultReturnType<TAbi>
+  } as DecodeErrorResultReturnType<abi>
 }

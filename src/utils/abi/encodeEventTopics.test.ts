@@ -349,7 +349,7 @@ test('Foo((uint,string))', () => {
   ).toThrowErrorMatchingInlineSnapshot(`
     [FilterTypeNotSupportedError: Filter type "tuple" is not supported.
 
-    Version: viem@1.0.2]
+    Version: viem@x.y.z]
   `)
 })
 
@@ -446,8 +446,8 @@ test("errors: event doesn't exist", () => {
     [AbiEventNotFoundError: Event "Bar" not found on ABI.
     Make sure you are using the correct ABI and that the event exists on it.
 
-    Docs: https://viem.sh/docs/contract/encodeEventTopics.html
-    Version: viem@1.0.2]
+    Docs: https://viem.sh/docs/contract/encodeEventTopics
+    Version: viem@x.y.z]
   `)
 })
 
@@ -475,8 +475,8 @@ test('errors: abi item not an event', () => {
     [AbiEventNotFoundError: Event not found on ABI.
     Make sure you are using the correct ABI and that the event exists on it.
 
-    Docs: https://viem.sh/docs/contract/encodeEventTopics.html
-    Version: viem@1.0.2]
+    Docs: https://viem.sh/docs/contract/encodeEventTopics
+    Version: viem@x.y.z]
   `)
 })
 

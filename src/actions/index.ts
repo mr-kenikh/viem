@@ -1,8 +1,15 @@
+// biome-ignore lint/performance/noBarrelFile: entrypoint module
 export {
   type AddChainErrorType,
   type AddChainParameters,
   addChain,
 } from './wallet/addChain.js'
+export {
+  type DeployContractErrorType,
+  type DeployContractParameters,
+  type DeployContractReturnType,
+  deployContract,
+} from './wallet/deployContract.js'
 export {
   type GetEnsAddressErrorType,
   type GetEnsAddressParameters,
@@ -97,6 +104,11 @@ export {
   getBalance,
 } from './public/getBalance.js'
 export {
+  type GetBlobBaseFeeErrorType,
+  type GetBlobBaseFeeReturnType,
+  getBlobBaseFee,
+} from './public/getBlobBaseFee.js'
+export {
   type GetBlockErrorType,
   type GetBlockParameters,
   type GetBlockReturnType,
@@ -115,16 +127,36 @@ export {
   getBlockTransactionCount,
 } from './public/getBlockTransactionCount.js'
 export {
-  type GetBytecodeErrorType,
-  type GetBytecodeParameters,
-  type GetBytecodeReturnType,
-  getBytecode,
-} from './public/getBytecode.js'
-export {
   type GetChainIdErrorType,
   type GetChainIdReturnType,
   getChainId,
 } from './public/getChainId.js'
+export {
+  /** @deprecated Use `GetCodeErrorType` instead */
+  type GetCodeErrorType as GetBytecodeErrorType,
+  /** @deprecated Use `GetCodeParameters` instead */
+  type GetCodeParameters as GetBytecodeParameters,
+  /** @deprecated Use `GetCodeReturnType` instead  */
+  type GetCodeReturnType as GetBytecodeReturnType,
+  /** @deprecated Use `getCode` instead  */
+  getCode as getBytecode,
+  type GetCodeErrorType,
+  type GetCodeParameters,
+  type GetCodeReturnType,
+  getCode,
+} from './public/getCode.js'
+export {
+  type GetContractEventsErrorType,
+  type GetContractEventsParameters,
+  type GetContractEventsReturnType,
+  getContractEvents,
+} from './public/getContractEvents.js'
+export {
+  type GetEip712DomainErrorType,
+  type GetEip712DomainParameters,
+  type GetEip712DomainReturnType,
+  getEip712Domain,
+} from './public/getEip712Domain.js'
 export {
   type GetFeeHistoryErrorType,
   type GetFeeHistoryParameters,
@@ -326,6 +358,7 @@ export {
   type PrepareTransactionRequestParameters,
   type PrepareTransactionRequestReturnType,
   prepareTransactionRequest,
+  defaultParameters as defaultPrepareTransactionRequestParameters,
 } from './wallet/prepareTransactionRequest.js'
 export {
   type SendTransactionErrorType,

@@ -31,6 +31,7 @@ import {
   InvalidInputRpcError,
   TransactionRejectedRpcError,
 } from '../../errors/rpc.js'
+import type { ExactPartial } from '../../types/utils.js'
 
 export function containsNodeError(err: BaseError) {
   return (
@@ -40,7 +41,9 @@ export function containsNodeError(err: BaseError) {
   )
 }
 
-export type GetNodeErrorParameters = Partial<SendTransactionParameters<any>>
+export type GetNodeErrorParameters = ExactPartial<
+  SendTransactionParameters<any>
+>
 
 export type GetNodeErrorReturnType =
   | ExecutionRevertedErrorType
@@ -65,15 +68,16 @@ export function getNodeError(
   const executionRevertedError =
     err instanceof BaseError
       ? err.walk(
-          (e) => (e as { code: number }).code === ExecutionRevertedError.code,
+          (e) =>
+            (e as { code: number } | null | undefined)?.code ===
+            ExecutionRevertedError.code,
         )
       : err
-  if (executionRevertedError instanceof BaseError) {
+  if (executionRevertedError instanceof BaseError)
     return new ExecutionRevertedError({
       cause: err,
       message: executionRevertedError.details,
     }) as any
-  }
   if (ExecutionRevertedError.nodeMessage.test(message))
     return new ExecutionRevertedError({
       cause: err,

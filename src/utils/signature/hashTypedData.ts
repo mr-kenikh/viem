@@ -100,16 +100,19 @@ export function hashDomain({
   })
 }
 
-type HashStructErrorType = EncodeDataErrorType | Keccak256ErrorType | ErrorType
+export type HashStructErrorType =
+  | EncodeDataErrorType
+  | Keccak256ErrorType
+  | ErrorType
 
-function hashStruct({
+export function hashStruct({
   data,
   primaryType,
   types,
 }: {
   data: Record<string, unknown>
   primaryType: string
-  types: Record<string, MessageTypeProperty[]>
+  types: Record<string, readonly MessageTypeProperty[]>
 }) {
   const encoded = encodeData({
     data,
@@ -132,7 +135,7 @@ function encodeData({
 }: {
   data: Record<string, unknown>
   primaryType: string
-  types: Record<string, MessageTypeProperty[]>
+  types: Record<string, readonly MessageTypeProperty[]>
 }) {
   const encodedTypes: AbiParameter[] = [{ type: 'bytes32' }]
   const encodedValues: unknown[] = [hashType({ primaryType, types })]
@@ -162,7 +165,7 @@ function hashType({
   types,
 }: {
   primaryType: string
-  types: Record<string, MessageTypeProperty[]>
+  types: Record<string, readonly MessageTypeProperty[]>
 }) {
   const encodedHashType = toHex(encodeType({ primaryType, types }))
   return keccak256(encodedHashType)
@@ -170,12 +173,12 @@ function hashType({
 
 type EncodeTypeErrorType = FindTypeDependenciesErrorType
 
-function encodeType({
+export function encodeType({
   primaryType,
   types,
 }: {
   primaryType: string
-  types: Record<string, MessageTypeProperty[]>
+  types: Record<string, readonly MessageTypeProperty[]>
 }) {
   let result = ''
   const unsortedDeps = findTypeDependencies({ primaryType, types })
@@ -199,7 +202,7 @@ function findTypeDependencies(
     types,
   }: {
     primaryType: string
-    types: Record<string, MessageTypeProperty[]>
+    types: Record<string, readonly MessageTypeProperty[]>
   },
   results: Set<string> = new Set(),
 ): Set<string> {
@@ -229,7 +232,7 @@ function encodeField({
   type,
   value,
 }: {
-  types: Record<string, MessageTypeProperty[]>
+  types: Record<string, readonly MessageTypeProperty[]>
   name: string
   type: string
   value: any

@@ -1,8 +1,17 @@
-import type { Abi } from 'abitype'
+import type { Abi, Address } from 'abitype'
 
 import type { Account } from '../../accounts/types.js'
+import {
+  type ParseAccountErrorType,
+  parseAccount,
+} from '../../accounts/utils/parseAccount.js'
 import type { Client } from '../../clients/createClient.js'
 import type { Transport } from '../../clients/transports/createTransport.js'
+import {
+  AccountNotFoundError,
+  type AccountNotFoundErrorType,
+} from '../../errors/account.js'
+import type { BaseError } from '../../errors/base.js'
 import type { ErrorType } from '../../errors/utils.js'
 import type { GetAccountParameter } from '../../types/account.js'
 import type {
@@ -14,7 +23,6 @@ import type {
   ContractFunctionArgs,
   ContractFunctionName,
   ContractFunctionParameters,
-  GetValue,
 } from '../../types/contract.js'
 import type { Hex } from '../../types/misc.js'
 import type { Prettify, UnionEvaluate, UnionOmit } from '../../types/utils.js'
@@ -23,8 +31,13 @@ import {
   type EncodeFunctionDataParameters,
   encodeFunctionData,
 } from '../../utils/abi/encodeFunctionData.js'
+import {
+  type GetContractErrorReturnType,
+  getContractError,
+} from '../../utils/errors/getContractError.js'
 import type { FormattedTransactionRequest } from '../../utils/formatters/transactionRequest.js'
 import { getAction } from '../../utils/getAction.js'
+import type { GetMutabilityAwareValue } from '../public/simulateContract.js'
 import {
   type SendTransactionErrorType,
   type SendTransactionReturnType,
@@ -53,18 +66,21 @@ export type WriteContractParameters<
   'nonpayable' | 'payable',
   functionName,
   args,
+  false,
   allFunctionNames
 > &
   GetChainParameter<chain, chainOverride> &
   Prettify<
-    GetAccountParameter<account> &
-      GetValue<
+    GetAccountParameter<account, Account | Address, true, true> &
+      GetMutabilityAwareValue<
         abi,
+        'nonpayable' | 'payable',
         functionName,
-        FormattedTransactionRequest<derivedChain>['value']
+        FormattedTransactionRequest<derivedChain>['value'],
+        args
       > & {
         /** Data to append to the end of the calldata. Useful for adding a ["domain" tag](https://opensea.notion.site/opensea/Seaport-Order-Attributions-ec2d69bf455041a5baa490941aad307f). */
-        dataSuffix?: Hex
+        dataSuffix?: Hex | undefined
       }
   > &
   UnionEvaluate<
@@ -78,24 +94,26 @@ export type WriteContractReturnType = SendTransactionReturnType
 
 export type WriteContractErrorType =
   | EncodeFunctionDataErrorType
-  | SendTransactionErrorType
+  | AccountNotFoundErrorType
+  | ParseAccountErrorType
+  | GetContractErrorReturnType<SendTransactionErrorType>
   | ErrorType
 
 /**
  * Executes a write function on a contract.
  *
- * - Docs: https://viem.sh/docs/contract/writeContract.html
- * - Examples: https://stackblitz.com/github/wevm/viem/tree/main/examples/contracts/writing-to-contracts
+ * - Docs: https://viem.sh/docs/contract/writeContract
+ * - Examples: https://stackblitz.com/github/wevm/viem/tree/main/examples/contracts_writing-to-contracts
  *
- * A "write" function on a Solidity contract modifies the state of the blockchain. These types of functions require gas to be executed, and hence a [Transaction](https://viem.sh/docs/glossary/terms.html) is needed to be broadcast in order to change the state.
+ * A "write" function on a Solidity contract modifies the state of the blockchain. These types of functions require gas to be executed, and hence a [Transaction](https://viem.sh/docs/glossary/terms) is needed to be broadcast in order to change the state.
  *
- * Internally, uses a [Wallet Client](https://viem.sh/docs/clients/wallet.html) to call the [`sendTransaction` action](https://viem.sh/docs/actions/wallet/sendTransaction.html) with [ABI-encoded `data`](https://viem.sh/docs/contract/encodeFunctionData.html).
+ * Internally, uses a [Wallet Client](https://viem.sh/docs/clients/wallet) to call the [`sendTransaction` action](https://viem.sh/docs/actions/wallet/sendTransaction) with [ABI-encoded `data`](https://viem.sh/docs/contract/encodeFunctionData).
  *
- * __Warning: The `write` internally sends a transaction – it does not validate if the contract write will succeed (the contract may throw an error). It is highly recommended to [simulate the contract write with `contract.simulate`](https://viem.sh/docs/contract/writeContract.html#usage) before you execute it.__
+ * __Warning: The `write` internally sends a transaction – it does not validate if the contract write will succeed (the contract may throw an error). It is highly recommended to [simulate the contract write with `contract.simulate`](https://viem.sh/docs/contract/writeContract#usage) before you execute it.__
  *
  * @param client - Client to use
  * @param parameters - {@link WriteContractParameters}
- * @returns A [Transaction Hash](https://viem.sh/docs/glossary/terms.html#hash). {@link WriteContractReturnType}
+ * @returns A [Transaction Hash](https://viem.sh/docs/glossary/terms#hash). {@link WriteContractReturnType}
  *
  * @example
  * import { createWalletClient, custom, parseAbi } from 'viem'
@@ -153,20 +171,47 @@ export async function writeContract<
     chainOverride
   >,
 ): Promise<WriteContractReturnType> {
-  const { abi, address, args, dataSuffix, functionName, ...request } =
-    parameters as WriteContractParameters
+  const {
+    abi,
+    account: account_ = client.account,
+    address,
+    args,
+    dataSuffix,
+    functionName,
+    ...request
+  } = parameters as WriteContractParameters
+
+  if (typeof account_ === 'undefined')
+    throw new AccountNotFoundError({
+      docsPath: '/docs/contract/writeContract',
+    })
+  const account = account_ ? parseAccount(account_) : null
+
   const data = encodeFunctionData({
     abi,
     args,
     functionName,
   } as EncodeFunctionDataParameters)
-  return getAction(
-    client,
-    sendTransaction,
-    'sendTransaction',
-  )({
-    data: `${data}${dataSuffix ? dataSuffix.replace('0x', '') : ''}`,
-    to: address,
-    ...request,
-  })
+
+  try {
+    return await getAction(
+      client,
+      sendTransaction,
+      'sendTransaction',
+    )({
+      data: `${data}${dataSuffix ? dataSuffix.replace('0x', '') : ''}`,
+      to: address,
+      account,
+      ...request,
+    })
+  } catch (error) {
+    throw getContractError(error as BaseError, {
+      abi,
+      address,
+      args,
+      docsPath: '/docs/contract/writeContract',
+      functionName,
+      sender: account?.address,
+    })
+  }
 }

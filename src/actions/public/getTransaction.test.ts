@@ -1,25 +1,31 @@
 import { assertType, describe, expect, test } from 'vitest'
 
-import { accounts, forkBlockNumber } from '~test/src/constants.js'
-import { publicClient, testClient, walletClient } from '~test/src/utils.js'
-import { celo } from '../../chains/index.js'
+import { accounts } from '~test/src/constants.js'
+import { BatchCallDelegation } from '../../../contracts/generated.js'
+import { anvilMainnet } from '../../../test/src/anvil.js'
+import { deploy } from '../../../test/src/utils.js'
+import { privateKeyToAccount } from '../../accounts/privateKeyToAccount.js'
+import { celo, holesky } from '../../chains/index.js'
 import { createPublicClient } from '../../clients/createPublicClient.js'
 import { http } from '../../clients/transports/http.js'
+import { signAuthorization } from '../../experimental/index.js'
+import { createClient, encodeFunctionData } from '../../index.js'
 import type { Transaction } from '../../types/transaction.js'
 import { parseEther } from '../../utils/unit/parseEther.js'
+import { wait } from '../../utils/wait.js'
 import { mine } from '../test/mine.js'
 import { setBalance } from '../test/setBalance.js'
 import { sendTransaction } from '../wallet/sendTransaction.js'
-
-import { wait } from '../../utils/wait.js'
 import { getBlock } from './getBlock.js'
 import { getTransaction } from './getTransaction.js'
+
+const client = anvilMainnet.getClient()
 
 const sourceAccount = accounts[0]
 const targetAccount = accounts[1]
 
 test('gets transaction', async () => {
-  const transaction = await getTransaction(publicClient, {
+  const transaction = await getTransaction(client, {
     blockNumber: 15131999n,
     index: 69,
   })
@@ -52,7 +58,7 @@ test('gets transaction', async () => {
 })
 
 test('gets transaction (legacy)', async () => {
-  const transaction = await getTransaction(publicClient, {
+  const transaction = await getTransaction(client, {
     blockNumber: 15131999n,
     index: 0,
   })
@@ -60,7 +66,7 @@ test('gets transaction (legacy)', async () => {
     {
       "blockHash": "0x89644bbd5c8d682a2e9611170e6c1f02573d866d286f006cbf517eec7254ec2d",
       "blockNumber": 15131999n,
-      "chainId": undefined,
+      "chainId": 1,
       "from": "0x47a6b2f389cf4bb6e4b69411c87ae82371daf87e",
       "gas": 200000n,
       "gasPrice": 57000000000n,
@@ -80,14 +86,14 @@ test('gets transaction (legacy)', async () => {
 })
 
 test('gets transaction (eip2930)', async () => {
-  const block = await getBlock(publicClient)
+  const block = await getBlock(client)
 
-  await setBalance(testClient, {
+  await setBalance(client, {
     address: targetAccount.address,
     value: targetAccount.balance,
   })
 
-  const hash = await sendTransaction(walletClient, {
+  const hash = await sendTransaction(client, {
     accessList: [{ address: targetAccount.address, storageKeys: [] }],
     account: sourceAccount.address,
     to: targetAccount.address,
@@ -95,41 +101,120 @@ test('gets transaction (eip2930)', async () => {
     gasPrice: BigInt((block.baseFeePerGas ?? 0n) * 2n),
   })
 
-  const transaction = await getTransaction(publicClient, {
+  const transaction = await getTransaction(client, {
     hash,
   })
   expect(Object.keys(transaction)).toMatchInlineSnapshot(`
     [
-      "hash",
+      "type",
+      "chainId",
       "nonce",
+      "gasPrice",
+      "gas",
+      "to",
+      "value",
+      "accessList",
+      "input",
+      "r",
+      "s",
+      "yParity",
+      "v",
+      "hash",
       "blockHash",
       "blockNumber",
       "transactionIndex",
       "from",
-      "to",
-      "value",
-      "gasPrice",
-      "gas",
-      "input",
-      "r",
-      "s",
-      "v",
-      "yParity",
-      "chainId",
-      "accessList",
-      "type",
       "typeHex",
     ]
   `)
   expect(transaction.type).toMatchInlineSnapshot('"eip2930"')
   expect(transaction.from).toMatchInlineSnapshot(
-    '"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"',
+    `"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"`,
   )
   expect(transaction.gas).toBeDefined()
   expect(transaction.to).toMatchInlineSnapshot(
-    '"0x70997970c51812dc3a010c7d01b50e0d17dc79c8"',
+    `"0x70997970c51812dc3a010c7d01b50e0d17dc79c8"`,
   )
   expect(transaction.value).toMatchInlineSnapshot('1000000000000000000n')
+})
+
+test('gets transaction (eip4844)', async () => {
+  const client = createClient({
+    chain: holesky,
+    transport: http(),
+  })
+  const transaction = await getTransaction(client, {
+    hash: '0x2ad52593fd11478bc0771a48361250220e93123a772e9f316ad8e87d05abe33a',
+  })
+  expect(transaction).toMatchInlineSnapshot(`
+    {
+      "accessList": [],
+      "blobVersionedHashes": [
+        "0x012580b7683c14cc7540be305587b0eec4e7ec739094213ca080e2526c9237c4",
+        "0x01243c18a024c835cce144b3b6b0eb878b7820c7c7b7d9feff80080d76519c45",
+      ],
+      "blockHash": "0xea4b9a0d4ddeb927ddca9d1ebbb8b0e623ffc7a8b1b62990ba2d1c4aac1f23b6",
+      "blockNumber": 1117041n,
+      "chainId": 17000,
+      "from": "0xcb98643b8786950f0461f3b0edf99d88f274574d",
+      "gas": 21000n,
+      "gasPrice": 1262418454n,
+      "hash": "0x2ad52593fd11478bc0771a48361250220e93123a772e9f316ad8e87d05abe33a",
+      "input": "0x",
+      "maxFeePerBlobGas": 30000000000n,
+      "maxFeePerGas": 1594475499n,
+      "maxPriorityFeePerGas": 369627615n,
+      "nonce": 8,
+      "r": "0xbab20bc88be122f86584c3150fd351018ba15e0346d2e62ced9851c02a0caaa2",
+      "s": "0x6da45371fa04d5a8759ed24f462642fc187a1f1062589f30f0c1bb57f60338f6",
+      "to": "0x0000000000000000000000000000000000000000",
+      "transactionIndex": 57,
+      "type": "eip4844",
+      "typeHex": "0x3",
+      "v": 1n,
+      "value": 0n,
+      "yParity": 1,
+    }
+  `)
+})
+
+test('gets transaction (eip7702)', async () => {
+  const authority = privateKeyToAccount(accounts[1].privateKey)
+
+  const { contractAddress } = await deploy(client, {
+    abi: BatchCallDelegation.abi,
+    bytecode: BatchCallDelegation.bytecode.object,
+  })
+
+  const authorization = await signAuthorization(client, {
+    account: authority,
+    contractAddress: contractAddress!,
+  })
+
+  const hash = await sendTransaction(client, {
+    account: authority,
+    authorizationList: [authorization],
+    data: encodeFunctionData({
+      abi: BatchCallDelegation.abi,
+      functionName: 'execute',
+      args: [
+        [
+          {
+            to: '0x0000000000000000000000000000000000000000',
+            data: '0x',
+            value: parseEther('1'),
+          },
+        ],
+      ],
+    }),
+  })
+
+  await mine(client, { blocks: 1 })
+
+  const transaction = await getTransaction(client, {
+    hash,
+  })
+  expect(transaction).toBeDefined()
 })
 
 test('chain w/ custom block type', async () => {
@@ -172,7 +257,7 @@ test('chain w/ custom block type', async () => {
 
 describe('args: hash', () => {
   test('gets transaction by hash', async () => {
-    const transaction = await getTransaction(publicClient, {
+    const transaction = await getTransaction(client, {
       hash: '0x886df53066105ebe390f3efcb4a523d7178597da84dfaa1bbc524e2b20b5650c',
     })
     expect(transaction).toMatchInlineSnapshot(`
@@ -203,33 +288,21 @@ describe('args: hash', () => {
   })
 
   test('throws if transaction not found', async () => {
-    // await expect(
-    //   getTransaction(publicClient, {
-    //     hash: '0x4ca7ee652d57678f26e887c149ab0735f41de37bcad58c9f6d3ed5824f15b74d',
-    //   }),
-    // ).rejects.toThrowError(
-    //   'Transaction with hash "0x4ca7ee652d57678f26e887c149ab0735f41de37bcad58c9f6d3ed5824f15b74d" could not be found.',
-    // )
-    // TODO: file foundry issue
     await expect(
-      getTransaction(publicClient, {
+      getTransaction(client, {
         hash: '0x4ca7ee652d57678f26e887c149ab0735f41de37bcad58c9f6d3ed5824f15b74d',
       }),
     ).rejects.toThrowErrorMatchingInlineSnapshot(`
-      [InternalRpcError: An internal error was received.
+      [TransactionNotFoundError: Transaction with hash "0x4ca7ee652d57678f26e887c149ab0735f41de37bcad58c9f6d3ed5824f15b74d" could not be found.
 
-      URL: http://localhost
-      Request body: {"method":"eth_getTransactionByHash","params":["0x4ca7ee652d57678f26e887c149ab0735f41de37bcad58c9f6d3ed5824f15b74d"]}
-
-      Details: Fork Error: DeserError { err: Error("invalid type: null, expected struct Transaction", line: 1, column: 4), text: "null" }
-      Version: viem@1.0.2]
+      Version: viem@x.y.z]
     `)
   })
 })
 
 describe('args: blockHash', () => {
   test('blockHash: gets transaction by block hash & index', async () => {
-    const transaction = await getTransaction(publicClient, {
+    const transaction = await getTransaction(client, {
       blockHash:
         '0x89644bbd5c8d682a2e9611170e6c1f02573d866d286f006cbf517eec7254ec2d',
       index: 5,
@@ -258,13 +331,13 @@ describe('args: blockHash', () => {
   }, 10000)
 
   test('blockHash: throws if transaction not found', async () => {
-    const { hash: blockHash } = await getBlock(publicClient, {
-      blockNumber: forkBlockNumber - 69n,
+    const { hash: blockHash } = await getBlock(client, {
+      blockNumber: anvilMainnet.forkBlockNumber - 69n,
     })
     if (!blockHash) throw new Error('no block hash found')
 
     await expect(
-      getTransaction(publicClient, {
+      getTransaction(client, {
         blockHash,
         index: 420,
       }),
@@ -274,7 +347,7 @@ describe('args: blockHash', () => {
 
 describe('args: blockNumber', () => {
   test('gets transaction by block number & index', async () => {
-    const transaction = await getTransaction(publicClient, {
+    const transaction = await getTransaction(client, {
       blockNumber: 15131999n,
       index: 5,
     })
@@ -303,7 +376,7 @@ describe('args: blockNumber', () => {
 
   test('throws if transaction not found', async () => {
     await expect(
-      getTransaction(publicClient, {
+      getTransaction(client, {
         blockNumber: 15131999n,
         index: 420,
       }),
@@ -315,16 +388,16 @@ describe('args: blockNumber', () => {
 
 describe('args: blockTag', () => {
   test('gets transaction by block tag & index', async () => {
-    await sendTransaction(walletClient, {
+    await sendTransaction(client, {
       account: sourceAccount.address,
       to: targetAccount.address,
       value: parseEther('1'),
     })
 
-    await mine(testClient, { blocks: 1 })
+    await mine(client, { blocks: 1 })
     await wait(200)
 
-    const transaction = await getTransaction(publicClient, {
+    const transaction = await getTransaction(client, {
       blockTag: 'latest',
       index: 0,
     })

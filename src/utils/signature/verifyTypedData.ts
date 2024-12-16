@@ -1,6 +1,6 @@
 import type { Address, TypedData } from 'abitype'
 
-import type { ByteArray, Hex } from '../../types/misc.js'
+import type { ByteArray, Hex, Signature } from '../../types/misc.js'
 import type { TypedDataDefinition } from '../../types/typedData.js'
 import { type GetAddressErrorType, getAddress } from '../address/getAddress.js'
 import {
@@ -21,7 +21,7 @@ export type VerifyTypedDataParameters<
   /** The address to verify the typed data for. */
   address: Address
   /** The signature to verify */
-  signature: Hex | ByteArray
+  signature: Hex | ByteArray | Signature
 }
 
 export type VerifyTypedDataReturnType = boolean
@@ -39,7 +39,7 @@ export type VerifyTypedDataErrorType =
  *        It is highly recommended to use `publicClient.verifyTypedData` instead to ensure
  *        wallet interoperability.
  *
- * - Docs {@link https://viem.sh/docs/utilities/verifyTypedData.html}
+ * - Docs {@link https://viem.sh/docs/utilities/verifyTypedData}
  *
  * @param parameters - {@link VerifyTypedDataParameters}
  * @returns Whether or not the signature is valid. {@link VerifyTypedDataReturnType}

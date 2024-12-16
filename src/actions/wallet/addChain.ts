@@ -22,7 +22,7 @@ export type AddChainErrorType =
 /**
  * Adds an EVM chain to the wallet.
  *
- * - Docs: https://viem.sh/docs/actions/wallet/addChain.html
+ * - Docs: https://viem.sh/docs/actions/wallet/addChain
  * - JSON-RPC Methods: [`eth_addEthereumChain`](https://eips.ethereum.org/EIPS/eip-3085)
  *
  * @param client - Client to use
@@ -39,9 +39,9 @@ export type AddChainErrorType =
  * await addChain(client, { chain: optimism })
  */
 export async function addChain<
-  TChain extends Chain | undefined,
-  TAccount extends Account | undefined,
->(client: Client<Transport, TChain, TAccount>, { chain }: AddChainParameters) {
+  chain extends Chain | undefined,
+  account extends Account | undefined,
+>(client: Client<Transport, chain, account>, { chain }: AddChainParameters) {
   const { id, name, nativeCurrency, rpcUrls, blockExplorers } = chain
   await client.request(
     {
@@ -58,6 +58,6 @@ export async function addChain<
         },
       ],
     },
-    { retryCount: 0 },
+    { dedupe: true, retryCount: 0 },
   )
 }

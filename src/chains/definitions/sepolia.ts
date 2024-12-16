@@ -3,16 +3,17 @@ import { defineChain } from '../../utils/chain/defineChain.js'
 export const sepolia = /*#__PURE__*/ defineChain({
   id: 11_155_111,
   name: 'Sepolia',
-  nativeCurrency: { name: 'Sepolia Ether', symbol: 'SEP', decimals: 18 },
+  nativeCurrency: { name: 'Sepolia Ether', symbol: 'ETH', decimals: 18 },
   rpcUrls: {
     default: {
-      http: ['https://rpc.sepolia.org'],
+      http: ['https://sepolia.drpc.org'],
     },
   },
   blockExplorers: {
     default: {
       name: 'Etherscan',
       url: 'https://sepolia.etherscan.io',
+      apiUrl: 'https://api-sepolia.etherscan.io/api',
     },
   },
   contracts: {
@@ -22,8 +23,8 @@ export const sepolia = /*#__PURE__*/ defineChain({
     },
     ensRegistry: { address: '0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e' },
     ensUniversalResolver: {
-      address: '0x21B000Fd62a880b2125A61e36a284BB757b76025',
-      blockCreated: 3914906,
+      address: '0xc8Af999e38273D658BE1b921b88A9Ddf005769cC',
+      blockCreated: 5_317_080,
     },
   },
   testnet: true,

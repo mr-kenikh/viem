@@ -1,5 +1,5 @@
+import { chainConfig } from '../../op-stack/chainConfig.js'
 import { defineChain } from '../../utils/chain/defineChain.js'
-import { chainConfig } from '../opStack/chainConfig.js'
 
 const sourceId = 1 // mainnet
 
@@ -16,11 +16,17 @@ export const optimism = /*#__PURE__*/ defineChain({
   blockExplorers: {
     default: {
       name: 'Optimism Explorer',
-      url: 'https://explorer.optimism.io',
+      url: 'https://optimistic.etherscan.io',
+      apiUrl: 'https://api-optimistic.etherscan.io/api',
     },
   },
   contracts: {
     ...chainConfig.contracts,
+    disputeGameFactory: {
+      [sourceId]: {
+        address: '0xe5965Ab5962eDc7477C8520243A95517CD252fA9',
+      },
+    },
     l2OutputOracle: {
       [sourceId]: {
         address: '0xdfe97868233d1aa22e815a266982f2cf17685a27',
@@ -33,6 +39,11 @@ export const optimism = /*#__PURE__*/ defineChain({
     portal: {
       [sourceId]: {
         address: '0xbEb5Fc579115071764c7423A4f12eDde41f106Ed',
+      },
+    },
+    l1StandardBridge: {
+      [sourceId]: {
+        address: '0x99C9fc46f92E8a1c0deC1b1747d010903E884bE1',
       },
     },
   },

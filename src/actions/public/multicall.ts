@@ -1,4 +1,4 @@
-import type { Address, Narrow } from 'abitype'
+import type { AbiStateMutability, Address, Narrow } from 'abitype'
 
 import type { Client } from '../../clients/createClient.js'
 import type { Transport } from '../../clients/transports/createTransport.js'
@@ -42,12 +42,12 @@ export type MulticallParameters<
     optional?: boolean
     properties?: Record<string, any>
   } = {},
-> = Pick<CallParameters, 'blockNumber' | 'blockTag'> & {
+> = Pick<CallParameters, 'blockNumber' | 'blockTag' | 'stateOverride'> & {
   allowFailure?: allowFailure | boolean | undefined
   batchSize?: number | undefined
   contracts: MulticallContracts<
     Narrow<contracts>,
-    { mutability: 'pure' | 'view' } & options
+    { mutability: AbiStateMutability } & options
   >
   multicallAddress?: Address | undefined
 }
@@ -61,7 +61,7 @@ export type MulticallReturnType<
 > = MulticallResults<
   Narrow<contracts>,
   allowFailure,
-  { mutability: 'pure' | 'view' } & options
+  { mutability: AbiStateMutability } & options
 >
 
 export type MulticallErrorType =
@@ -73,9 +73,9 @@ export type MulticallErrorType =
   | ErrorType
 
 /**
- * Similar to [`readContract`](https://viem.sh/docs/contract/readContract.html), but batches up multiple functions on a contract in a single RPC call via the [`multicall3` contract](https://github.com/mds1/multicall).
+ * Similar to [`readContract`](https://viem.sh/docs/contract/readContract), but batches up multiple functions on a contract in a single RPC call via the [`multicall3` contract](https://github.com/mds1/multicall).
  *
- * - Docs: https://viem.sh/docs/contract/multicall.html
+ * - Docs: https://viem.sh/docs/contract/multicall
  *
  * @param client - Client to use
  * @param parameters - {@link MulticallParameters}
@@ -125,6 +125,7 @@ export async function multicall<
     blockNumber,
     blockTag,
     multicallAddress: multicallAddress_,
+    stateOverride,
   } = parameters
   const contracts = parameters.contracts as ContractFunctionParameters[]
 
@@ -218,6 +219,7 @@ export async function multicall<
         blockNumber,
         blockTag,
         functionName: 'aggregate3',
+        stateOverride,
       }),
     ),
   )

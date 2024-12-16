@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react'
 import ReactDOM from 'react-dom/client'
 import {
   http,
-  Address,
-  Hash,
-  TransactionReceipt,
+  type Address,
+  type Hash,
+  type TransactionReceipt,
   createPublicClient,
   createWalletClient,
   custom,
@@ -59,14 +59,12 @@ function Example() {
         <div>Connected: {account}</div>
         <button onClick={mint}>Mint</button>
         {receipt && (
-          <>
-            <div>
-              Receipt:{' '}
-              <pre>
-                <code>{stringify(receipt, null, 2)}</code>
-              </pre>
-            </div>
-          </>
+          <div>
+            Receipt:{' '}
+            <pre>
+              <code>{stringify(receipt, null, 2)}</code>
+            </pre>
+          </div>
         )}
       </>
     )

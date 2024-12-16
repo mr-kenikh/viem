@@ -5,14 +5,17 @@ export const boba = /*#__PURE__*/ defineChain({
   name: 'Boba Network',
   nativeCurrency: {
     decimals: 18,
-    name: 'Boba',
-    symbol: 'BOBA',
+    name: 'Ether',
+    symbol: 'ETH',
   },
   rpcUrls: {
     default: { http: ['https://mainnet.boba.network'] },
   },
   blockExplorers: {
-    default: { name: 'BOBAScan', url: 'https://bobascan.com' },
+    default: {
+      name: 'BOBAScan',
+      url: 'https://bobascan.com',
+    },
   },
   contracts: {
     multicall3: {

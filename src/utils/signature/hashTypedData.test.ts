@@ -61,6 +61,21 @@ test('domain: empty name', () => {
   )
 })
 
+test('domain: bigint value for chainId', () => {
+  expect(
+    hashTypedData({
+      ...typedData.complex,
+      domain: {
+        chainId:
+          14018334920824264832118464179726739019961432051877733167310318607178n,
+      },
+      primaryType: 'Mail',
+    }),
+  ).toMatchInlineSnapshot(
+    '"0x14ed1dbbfecbe5de3919f7ea47daafdf3a29dfbb60dd88d85509f79773d503a5"',
+  )
+})
+
 test('minimal valid typed message', () => {
   const hash = hashTypedData({
     types: {
@@ -116,7 +131,7 @@ test('typed message with a domain separator that uses all fields.', () => {
   )
 })
 
-test('typed message with only custom domain seperator fields', () => {
+test('typed message with only custom domain separator fields', () => {
   const hash = hashTypedData({
     types: {
       EIP712Domain: [
@@ -205,4 +220,44 @@ test('typed message with data', () => {
   expect(hash).toMatchInlineSnapshot(
     '"0xd2669f23b7849020ad41bcbff5b51372793f91320e0f901641945568ed7322be"',
   )
+})
+
+test('wrong domain value', () => {
+  expect(() =>
+    hashTypedData({
+      ...typedData.complex,
+      domain: 'wrong' as unknown as Record<string, unknown>,
+      primaryType: 'Mail',
+    }),
+  ).toThrowErrorMatchingInlineSnapshot(`
+    [BaseError: Invalid domain ""wrong"".
+
+    Must be a valid EIP-712 domain.
+
+    Version: viem@x.y.z]
+  `)
+})
+
+test('https://github.com/wevm/viem/issues/2888', () => {
+  expect(() =>
+    hashTypedData({
+      domain: { name: 'Domain' },
+      types: {
+        Message: [{ name: 'contents', type: 'bytes32' }],
+        bytes32: [],
+        address: [],
+      },
+      primaryType: 'Message',
+      message: {
+        contents:
+          '0x1111111111111111111111111111111111111111111111111111111111111111',
+      },
+    }),
+  ).toThrowErrorMatchingInlineSnapshot(`
+    [InvalidStructTypeError: Struct type "bytes32" is invalid.
+
+    Struct type must not be a Solidity type.
+
+    Version: viem@x.y.z]
+  `)
 })

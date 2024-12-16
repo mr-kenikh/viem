@@ -39,7 +39,10 @@ describe('errors', () => {
     ).toThrowErrorMatchingInlineSnapshot(`
       [InvalidAddressError: Address "0xa5cc3c03994db5b0d9a5eEdD10Cabab0813678az" is invalid.
 
-      Version: viem@1.0.2]
+      - Address must be a hex value of 20 bytes (40 hex characters).
+      - Address must match its checksum counterpart.
+
+      Version: viem@x.y.z]
     `)
     expect(() =>
       isAddressEqual(
@@ -49,7 +52,10 @@ describe('errors', () => {
     ).toThrowErrorMatchingInlineSnapshot(`
       [InvalidAddressError: Address "0xa5cc3c03994db5b0d9a5eEdD10Cabab0813678aff" is invalid.
 
-      Version: viem@1.0.2]
+      - Address must be a hex value of 20 bytes (40 hex characters).
+      - Address must match its checksum counterpart.
+
+      Version: viem@x.y.z]
     `)
   })
 })

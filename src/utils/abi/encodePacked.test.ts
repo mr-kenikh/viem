@@ -222,7 +222,10 @@ test('error: invalid address', () => {
   ).toThrowErrorMatchingInlineSnapshot(`
     [InvalidAddressError: Address "0xdeadbeef" is invalid.
 
-    Version: viem@1.0.2]
+    - Address must be a hex value of 20 bytes (40 hex characters).
+    - Address must match its checksum counterpart.
+
+    Version: viem@x.y.z]
   `)
 })
 
@@ -235,7 +238,7 @@ test('error: length mismatch', () => {
     Expected length (params): 1
     Given length (values): 2
 
-    Version: viem@1.0.2]
+    Version: viem@x.y.z]
   `)
 })
 
@@ -245,7 +248,7 @@ test('error: bytes size mismatch', () => {
   ).toThrowErrorMatchingInlineSnapshot(`
     [BytesSizeMismatchError: Expected bytes8, got bytes4.
 
-    Version: viem@1.0.2]
+    Version: viem@x.y.z]
   `)
 })
 
@@ -256,6 +259,6 @@ test('error: unsupported type', () => {
   ).toThrowErrorMatchingInlineSnapshot(`
     [UnsupportedPackedAbiType: Type "function" is not supported for packed encoding.
 
-    Version: viem@1.0.2]
+    Version: viem@x.y.z]
   `)
 })

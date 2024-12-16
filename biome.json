@@ -8,18 +8,21 @@
       ".next",
       ".svelte-kit",
       ".vercel",
-      ".vitepress",
       "**/node_modules",
       "CHANGELOG.md",
+      "bun.lockb",
       "cache",
-      "test/contracts",
-      "test/chains",
+      "contracts",
+      "test/kzg/*.json",
+      "test/kzg/*.txt",
       "coverage",
       "tsconfig.json",
       "tsconfig.*.json",
       "generated.ts",
       "vectors/*.json",
-      "vectors/**/*.test.ts"
+      "vectors/**/*.test.ts",
+      "wagmi",
+      "site/dist"
     ]
   },
   "formatter": {
@@ -43,6 +46,8 @@
         "noUnusedVariables": "error"
       },
       "performance": {
+        "noBarrelFile": "error",
+        "noReExportAll": "error",
         "noDelete": "off"
       },
       "style": {
@@ -53,6 +58,7 @@
         "noArrayIndexKey": "off",
         "noAssignInExpressions": "off",
         "noConfusingVoidType": "off",
+        "noConsoleLog": "error",
         "noExplicitAny": "off",
         "noRedeclare": "off"
       }
@@ -61,7 +67,7 @@
   "javascript": {
     "formatter": {
       "quoteStyle": "single",
-      "trailingComma": "all",
+      "trailingCommas": "all",
       "semicolons": "asNeeded"
     }
   },

@@ -7,13 +7,10 @@ export const defichainEvmTestnet = /*#__PURE__*/ defineChain({
   nativeCurrency: {
     name: 'DeFiChain',
     symbol: 'DFI',
-    decimals: 8,
+    decimals: 18,
   },
   rpcUrls: {
     default: {
-      http: ['https://eth.testnet.ocean.jellyfishsdk.com'],
-    },
-    public: {
       http: ['https://eth.testnet.ocean.jellyfishsdk.com'],
     },
   },
@@ -21,10 +18,6 @@ export const defichainEvmTestnet = /*#__PURE__*/ defineChain({
     default: {
       name: 'DeFiScan',
       url: 'https://meta.defiscan.live/?network=TestNet',
-    },
-    blockscout: {
-      name: 'Blockscout',
-      url: 'https://blockscout.testnet.ocean.jellyfishsdk.com',
     },
   },
   contracts: {

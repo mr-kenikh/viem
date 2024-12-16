@@ -22,7 +22,7 @@ export type SwitchChainErrorType =
 /**
  * Switch the target chain in a wallet.
  *
- * - Docs: https://viem.sh/docs/actions/wallet/switchChain.html
+ * - Docs: https://viem.sh/docs/actions/wallet/switchChain
  * - JSON-RPC Methods: [`eth_switchEthereumChain`](https://eips.ethereum.org/EIPS/eip-3326)
  *
  * @param client - Client to use
@@ -40,9 +40,9 @@ export type SwitchChainErrorType =
  * await switchChain(client, { id: optimism.id })
  */
 export async function switchChain<
-  TChain extends Chain | undefined,
-  TAccount extends Account | undefined = undefined,
->(client: Client<Transport, TChain, TAccount>, { id }: SwitchChainParameters) {
+  chain extends Chain | undefined,
+  account extends Account | undefined = undefined,
+>(client: Client<Transport, chain, account>, { id }: SwitchChainParameters) {
   await client.request(
     {
       method: 'wallet_switchEthereumChain',

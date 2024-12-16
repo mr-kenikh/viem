@@ -13,8 +13,6 @@ export type EstimateGasExecutionErrorType = EstimateGasExecutionError & {
 export class EstimateGasExecutionError extends BaseError {
   override cause: BaseError
 
-  override name = 'EstimateGasExecutionError'
-
   constructor(
     cause: BaseError,
     {
@@ -30,9 +28,9 @@ export class EstimateGasExecutionError extends BaseError {
       to,
       value,
     }: Omit<EstimateGasParameters<any>, 'account'> & {
-      account?: Account
-      chain?: Chain
-      docsPath?: string
+      account?: Account | undefined
+      chain?: Chain | undefined
+      docsPath?: string | undefined
     },
   ) {
     const prettyArgs = prettyPrint({
@@ -62,6 +60,7 @@ export class EstimateGasExecutionError extends BaseError {
         'Estimate Gas Arguments:',
         prettyArgs,
       ].filter(Boolean) as string[],
+      name: 'EstimateGasExecutionError',
     })
     this.cause = cause
   }

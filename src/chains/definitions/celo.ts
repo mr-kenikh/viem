@@ -1,5 +1,5 @@
+import { chainConfig } from '../../celo/chainConfig.js'
 import { defineChain } from '../../utils/chain/defineChain.js'
-import { chainConfig } from '../celo/chainConfig.js'
 
 export const celo = /*#__PURE__*/ defineChain({
   ...chainConfig,
@@ -16,7 +16,8 @@ export const celo = /*#__PURE__*/ defineChain({
   blockExplorers: {
     default: {
       name: 'Celo Explorer',
-      url: 'https://explorer.celo.org/mainnet',
+      url: 'https://celoscan.io',
+      apiUrl: 'https://api.celoscan.io/api',
     },
   },
   contracts: {
