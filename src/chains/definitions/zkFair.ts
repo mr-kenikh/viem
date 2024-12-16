@@ -27,11 +27,5 @@ export const zkFair = /*#__PURE__*/ defineChain({
       blockCreated: 6090959,
     },
   },
-  contracts: {
-    multicall3: {
-      address: '0xca11bde05977b3631167028862be2a173976ca11',
-      blockCreated: 6090959,
-    },
-  },
   testnet: false,
 })
