@@ -1,5 +1,15 @@
 # viem
 
+## 2.21.56
+
+### Patch Changes
+
+- [#3120](https://github.com/wevm/viem/pull/3120) [`d7b13cb1d242dbd6ae5affa3a6c68c504fa96eab`](https://github.com/wevm/viem/commit/d7b13cb1d242dbd6ae5affa3a6c68c504fa96eab) Thanks [@sajanrajdev](https://github.com/sajanrajdev)! - Updated Corn Name
+
+- [#1674](https://github.com/wevm/viem/pull/1674) [`7542621acf979a7d83c899ea179c1751608ae424`](https://github.com/wevm/viem/commit/7542621acf979a7d83c899ea179c1751608ae424) Thanks [@mr-kenikh](https://github.com/mr-kenikh)! - Added multicall3 for zkFair Mainnet
+
+- [`43ce543850de02c18fba4aede820e943c609dcbd`](https://github.com/wevm/viem/commit/43ce543850de02c18fba4aede820e943c609dcbd) Thanks [@jxom](https://github.com/jxom)! - Added multicall addresses to Plume.
+
 ## 2.21.55
 
 ### Patch Changes
